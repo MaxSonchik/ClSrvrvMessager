@@ -1,15 +1,16 @@
 #include <boost/asio.hpp>
 #include <iostream>
 #include <thread>
+#include <memory>
 
 using boost::asio::ip::tcp;
 using boost::asio::ip::udp;
 
 class Server {
 public:
-    Server(boost::asio::io_service& io_service, short tcp_port, short udp_port)
-        : tcp_acceptor_(io_service, tcp::endpoint(tcp::v4(), tcp_port)),
-          udp_socket_(io_service, udp::endpoint(udp::v4(), udp_port)) {}
+    Server(boost::asio::io_context& io_context, short tcp_port, short udp_port)
+        : tcp_acceptor_(io_context, tcp::endpoint(tcp::v4(), tcp_port)),
+          udp_socket_(io_context, udp::endpoint(udp::v4(), udp_port)) {}
 
     void start() {
         start_tcp_accept();
@@ -46,7 +47,7 @@ private:
             });
     }
 
-    void handle_udp_request(std::size_t length) {
+    void handle_udp_request([[maybe_unused]]std::size_t length) {
         std::string message = "Hello from UDP server!";
         udp_socket_.send_to(boost::asio::buffer(message), udp_endpoint_);
     }
@@ -58,27 +59,13 @@ private:
     char udp_buffer_[1024];
 };
 
-void run_io_service(boost::asio::io_service& io_service) {
-    io_service.run();
-}
-
 int main() {
     try {
-        boost::asio::io_service io_service;
-        Server server(io_service, 12345, 12346);
+        boost::asio::io_context io_context;
+        Server server(io_context, 12345, 12346);
         server.start();
-
-        // Запуск асинхронных операций в разных потоках
-        std::thread io_thread1(run_io_service, std::ref(io_service));
-        std::thread io_thread2(run_io_service, std::ref(io_service));
-
-        io_thread1.join();
-        io_thread2.join();
+        io_context.run();
     } catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
     }
 }
-
-
-
-
