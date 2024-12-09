@@ -1,7 +1,9 @@
 #include <boost/asio.hpp>
+#include <sqlite3.h>
 #include <iostream>
 #include <memory>
 #include <thread>
+
 
 //ЛИНТЕРЫ
 //find . -name "*.cpp"| xargs clang-format -i
@@ -64,6 +66,20 @@ class Server {
     char udp_buffer_[1024];
 };
 
+void add_client_to_db(const std::string& name) {
+    sqlite3* db;
+    sqlite3_open("clients.db", &db);
+
+    std::string sql = "INSERT INTO clients (name) VALUES ('" + name + "');";
+    char* errmsg;
+    if (sqlite3_exec(db, sql.c_str(), 0, 0, &errmsg) != SQLITE_OK) {
+        std::cerr << "Error: " << errmsg << std::endl;
+        sqlite3_free(errmsg);
+    }
+
+    sqlite3_close(db);
+}
+
 int main() {
     try {
         boost::asio::io_context io_context;
@@ -74,3 +90,5 @@ int main() {
         std::cerr << "Exception: " << e.what() << std::endl;
     }
 }
+
+
