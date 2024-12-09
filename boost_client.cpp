@@ -6,10 +6,11 @@ using boost::asio::ip::tcp;
 using boost::asio::ip::udp;
 
 class Client {
-public:
+   public:
     Client(boost::asio::io_service& io_service, const std::string& host, short tcp_port, short udp_port)
-        : tcp_socket_(io_service), udp_socket_(io_service), udp_endpoint_(boost::asio::ip::address::from_string(host), udp_port) {
-
+        : tcp_socket_(io_service),
+          udp_socket_(io_service),
+          udp_endpoint_(boost::asio::ip::address::from_string(host), udp_port) {
         // Устанавливаем соединение по TCP
         tcp_endpoint_ = tcp::endpoint(boost::asio::ip::address::from_string(host), tcp_port);
     }
@@ -19,7 +20,7 @@ public:
         start_udp_send_receive();
     }
 
-private:
+   private:
     // TCP
     void start_tcp_connection() {
         tcp_socket_.connect(tcp_endpoint_);

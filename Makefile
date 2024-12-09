@@ -14,7 +14,7 @@ CLIENT_OBJ = boost_client.o
 SERVER_BIN = server
 CLIENT_BIN = client
 
-.PHONY: all clean clang-format
+.PHONY: all clean clang
 
 # Цель по умолчанию (сборка всего)
 all: $(SERVER_BIN) $(CLIENT_BIN)
@@ -36,8 +36,11 @@ clean:
 	rm -f $(SERVER_OBJ) $(CLIENT_OBJ) $(SERVER_BIN) $(CLIENT_BIN)
 
 # Цель для форматирования с использованием clang-format
+clang-check:
+	find . -name "*.cpp"| xargs clang-format -n
+
 clang-format:
-	clang-format -i *.cpp *.h
+	find . -name "*.cpp"| xargs clang-format -i
 
 # Отладочная цель
 debug: CXXFLAGS += -DDEBUG
