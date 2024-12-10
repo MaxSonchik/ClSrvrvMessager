@@ -41,7 +41,10 @@ private:
                     clients_[client_id] = socket;
                 }
 
-                std::cout << "Client " << client_id << " connected." << std::endl;
+                // Выводим в консоль информацию о подключении клиента
+                std::cout << "Client connected. Assigned ID: " << client_id 
+                          << ", IP: " << socket->remote_endpoint().address().to_string() 
+                          << std::endl;
 
                 while (true) {
                     size_t length = socket->read_some(boost::asio::buffer(data));
@@ -96,10 +99,11 @@ private:
 
 int main() {
     try {
-        const short port = 12345; // Замените на нужный порт
+        const short port = 8080; // Замените на нужный порт
 
         boost::asio::io_context io_context;
         Server server(io_context, port);
+        std::cout << "Server is running on port " << port << "..." << std::endl;
         io_context.run();
     } catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;

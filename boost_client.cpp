@@ -63,7 +63,7 @@ private:
 int main() {
     try {
         const std::string host = "95.24.130.86"; // Замените на нужный IP
-        const short port = 12345; // Замените на нужный порт
+        const short port = 8080; // Замените на нужный порт
 
         boost::asio::io_context io_context;
         Client client(io_context, host, port);
