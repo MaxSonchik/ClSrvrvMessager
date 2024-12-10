@@ -73,6 +73,7 @@
         "semaphore": "cpp",
         "complex": "cpp",
         "format": "cpp",
-        "typeindex": "cpp"
+        "typeindex": "cpp",
+        "*.ipp": "cpp"
     }
 }

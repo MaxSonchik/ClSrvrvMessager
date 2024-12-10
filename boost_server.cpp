@@ -1,94 +1,160 @@
 #include <boost/asio.hpp>
 #include <sqlite3.h>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <thread>
-
-
-//ЛИНТЕРЫ
-//find . -name "*.cpp"| xargs clang-format -i
-//добавил в мейкфайл, для форматирования можно просто прописать make clang
-//при использовании заголовочных файлов юзаем 
-//find . -name "*.cpp" -o -name | xargs clang-format -n
-
+#include <mutex>
 
 using boost::asio::ip::tcp;
-using boost::asio::ip::udp;
 
 class Server {
-   public:
-    Server(boost::asio::io_context& io_context, short tcp_port, short udp_port)
-        : tcp_acceptor_(io_context, tcp::endpoint(tcp::v4(), tcp_port)),
-          udp_socket_(io_context, udp::endpoint(udp::v4(), udp_port)) {}
-
-    void start() {
-        start_tcp_accept();
-        start_udp_receive();
+public:
+    Server(boost::asio::io_context& io_context, short tcp_port)
+        : acceptor_(io_context, tcp::endpoint(tcp::v4(), tcp_port)) {
+        initialize_database();
+        start_accept();
     }
 
-   private:
-    // TCP
-    void start_tcp_accept() {
-        tcp_socket_ = std::make_shared<tcp::socket>(tcp_acceptor_.get_executor());
-        tcp_acceptor_.async_accept(*tcp_socket_, [this](boost::system::error_code ec) {
-            if (!ec) {
-                handle_tcp_request();
+private:
+    void start_accept() {
+        auto new_socket = std::make_shared<tcp::socket>(acceptor_.get_executor());
+        acceptor_.async_accept(*new_socket,
+            [this, new_socket](const boost::system::error_code& error) {
+                if (!error) {
+                    handle_client(new_socket);
+                }
+                start_accept();
+            });
+    }
+
+    void handle_client(std::shared_ptr<tcp::socket> socket) {
+        std::thread([this, socket]() {
+            int client_id = -1;
+
+            try {
+                char data[1024];
+
+                // Получение ID клиента
+                size_t length = socket->read_some(boost::asio::buffer(data));
+                client_id = std::stoi(std::string(data, length));
+
+                {
+                    std::lock_guard<std::mutex> lock(mutex_);
+                    clients_[client_id] = socket;
+                }
+
+                std::cout << "Client " << client_id << " connected." << std::endl;
+
+                int active_chat_id = -1;
+
+                while (true) {
+                    length = socket->read_some(boost::asio::buffer(data));
+                    std::string message(data, length);
+
+                    if (message.find("START:") == 0) {
+                        active_chat_id = std::stoi(message.substr(6));
+                        std::cout << "Client " << client_id << " started chat with " << active_chat_id << std::endl;
+                    } else if (message == "EXIT") {
+                        active_chat_id = -1;
+                        std::cout << "Client " << client_id << " exited chat." << std::endl;
+                    } else if (active_chat_id != -1) {
+                        forward_message(client_id, active_chat_id, message);
+                    }
+                }
+            } catch (std::exception& e) {
+                std::cerr << "Client disconnected: " << e.what() << std::endl;
             }
-            start_tcp_accept();
-        });
+
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                auto it = clients_.find(client_id);
+                if (it != clients_.end()) {
+                    clients_.erase(it);
+                }
+            }
+        }).detach();
     }
 
-    void handle_tcp_request() {
-        std::string message = "Hello from TCP server!";
-        boost::asio::write(*tcp_socket_, boost::asio::buffer(message));
+    void forward_message(int sender_id, int receiver_id, const std::string& message) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto it = clients_.find(receiver_id);
+        if (it != clients_.end()) {
+            auto socket = it->second;
+            std::string full_message = std::to_string(sender_id) + ": " + message;
+            boost::asio::write(*socket, boost::asio::buffer(full_message));
+
+            // Логирование сообщения
+            log_message(sender_id, receiver_id, message);
+        } else {
+            std::cerr << "Receiver " << receiver_id << " not found." << std::endl;
+        }
     }
 
-    // UDP
-    void start_udp_receive() {
-        udp_socket_.async_receive_from(boost::asio::buffer(udp_buffer_), udp_endpoint_,
-                                       [this](boost::system::error_code ec, std::size_t bytes_recvd) {
-                                           if (!ec && bytes_recvd > 0) {
-                                               handle_udp_request(bytes_recvd);
-                                           }
-                                           start_udp_receive();
-                                       });
+    void initialize_database() {
+        if (sqlite3_open("logs.db", &db_) != SQLITE_OK) {
+            throw std::runtime_error("Failed to open database");
+        }
+
+        const char* sql = R"(
+            CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                sender_id INTEGER NOT NULL,
+                receiver_id INTEGER NOT NULL,
+                message TEXT NOT NULL
+            );
+        )";
+
+        char* error_msg = nullptr;
+        if (sqlite3_exec(db_, sql, nullptr, nullptr, &error_msg) != SQLITE_OK) {
+            std::string error = error_msg;
+            sqlite3_free(error_msg);
+            throw std::runtime_error("Failed to create table: " + error);
+        }
     }
 
-    void handle_udp_request([[maybe_unused]] std::size_t length) {
-        std::string message = "Hello from UDP server!";
-        udp_socket_.send_to(boost::asio::buffer(message), udp_endpoint_);
+    void log_message(int sender_id, int receiver_id, const std::string& message) {
+        const char* sql = R"(
+            INSERT INTO messages (sender_id, receiver_id, message)
+            VALUES (?, ?, ?);
+        )";
+
+        sqlite3_stmt* stmt;
+        if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+            throw std::runtime_error("Failed to prepare statement");
+        }
+
+        sqlite3_bind_int(stmt, 1, sender_id);
+        sqlite3_bind_int(stmt, 2, receiver_id);
+        sqlite3_bind_text(stmt, 3, message.c_str(), -1, SQLITE_STATIC);
+
+        if (sqlite3_step(stmt) != SQLITE_DONE) {
+            throw std::runtime_error("Failed to execute statement");
+        }
+
+        sqlite3_finalize(stmt);
     }
 
-    tcp::acceptor tcp_acceptor_;
-    std::shared_ptr<tcp::socket> tcp_socket_;
-    udp::socket udp_socket_;
-    udp::endpoint udp_endpoint_;
-    char udp_buffer_[1024];
+    tcp::acceptor acceptor_;
+    std::map<int, std::shared_ptr<tcp::socket>> clients_;
+    std::mutex mutex_;
+    sqlite3* db_;
 };
 
-void add_client_to_db(const std::string& name) {
-    sqlite3* db;
-    sqlite3_open("clients.db", &db);
-
-    std::string sql = "INSERT INTO clients (name) VALUES ('" + name + "');";
-    char* errmsg;
-    if (sqlite3_exec(db, sql.c_str(), 0, 0, &errmsg) != SQLITE_OK) {
-        std::cerr << "Error: " << errmsg << std::endl;
-        sqlite3_free(errmsg);
-    }
-
-    sqlite3_close(db);
-}
-
-int main() {
+int main(int argc, char* argv[]) {
     try {
+        if (argc != 2) {
+            std::cerr << "Usage: server <port>" << std::endl;
+            return 1;
+        }
+
         boost::asio::io_context io_context;
-        Server server(io_context, 12345, 12346);
-        server.start();
+        Server server(io_context, std::atoi(argv[1]));
         io_context.run();
     } catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
     }
+
+    return 0;
 }
-
-

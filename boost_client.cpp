@@ -1,57 +1,111 @@
 #include <boost/asio.hpp>
 #include <iostream>
 #include <thread>
+#include <string>
 
 using boost::asio::ip::tcp;
-using boost::asio::ip::udp;
 
 class Client {
-   public:
-    Client(boost::asio::io_service& io_service, const std::string& host, short tcp_port, short udp_port)
-        : tcp_socket_(io_service),
-          udp_socket_(io_service),
-          udp_endpoint_(boost::asio::ip::address::from_string(host), udp_port) {
-        // Устанавливаем соединение по TCP
-        tcp_endpoint_ = tcp::endpoint(boost::asio::ip::address::from_string(host), tcp_port);
+public:
+    Client(boost::asio::io_context& io_context, const std::string& host, short tcp_port)
+        : socket_(io_context) {
+        tcp::resolver resolver(io_context);
+        auto endpoints = resolver.resolve(host, std::to_string(tcp_port));
+        boost::asio::connect(socket_, endpoints);
     }
 
-    void start() {
-        start_tcp_connection();
-        start_udp_send_receive();
+    void run(int client_id) {
+        // Отправляем ID клиента серверу
+        boost::asio::write(socket_, boost::asio::buffer(std::to_string(client_id)));
+
+        std::thread reader_thread([this]() { read_messages(); });
+
+        main_menu();
+
+        reader_thread.join();
     }
 
-   private:
-    // TCP
-    void start_tcp_connection() {
-        tcp_socket_.connect(tcp_endpoint_);
-        std::string message;
-        boost::asio::read(tcp_socket_, boost::asio::buffer(message));
-        std::cout << "Received from TCP server: " << message << std::endl;
+private:
+    void read_messages() {
+        try {
+            char data[1024];
+            while (true) {
+                size_t length = socket_.read_some(boost::asio::buffer(data));
+                std::cout << "Message received: " << std::string(data, length) << std::endl;
+            }
+        } catch (std::exception& e) {
+            std::cerr << "Disconnected: " << e.what() << std::endl;
+        }
     }
 
-    // UDP
-    void start_udp_send_receive() {
-        std::string message = "Hello from UDP client!";
-        udp_socket_.send_to(boost::asio::buffer(message), udp_endpoint_);
+    void main_menu() {
+        try {
+            while (true) {
+                std::cout << "\nMain Menu:\n";
+                std::cout << "1. Start chat with a user (Enter their ID)\n";
+                std::cout << "2. Exit chat\n";
+                std::cout << "Choice: ";
+                int choice;
+                std::cin >> choice;
 
-        char recv_buffer[1024];
-        udp::endpoint sender_endpoint;
-        size_t len = udp_socket_.receive_from(boost::asio::buffer(recv_buffer), sender_endpoint);
-        std::cout << "Received from UDP server: " << std::string(recv_buffer, len) << std::endl;
+                if (choice == 1) {
+                    std::cout << "Enter recipient ID: ";
+                    int recipient_id;
+                    std::cin >> recipient_id;
+
+                    // Уведомляем сервер о начале диалога
+                    std::string start_command = "START:" + std::to_string(recipient_id);
+                    boost::asio::write(socket_, boost::asio::buffer(start_command));
+
+                    chat_mode();
+                } else if (choice == 2) {
+                    std::cout << "Exiting...\n";
+                    break;
+                }
+            }
+        } catch (std::exception& e) {
+            std::cerr << "Error: " << e.what() << std::endl;
+        }
     }
 
-    tcp::socket tcp_socket_;
-    udp::socket udp_socket_;
-    tcp::endpoint tcp_endpoint_;
-    udp::endpoint udp_endpoint_;
+    void chat_mode() {
+        try {
+            std::cout << "Enter 'EXIT' to leave chat.\n";
+            std::cin.ignore(); // Очистить ввод
+
+            while (true) {
+                std::string message;
+                std::cout << "You: ";
+                std::getline(std::cin, message);
+
+                if (message == "EXIT") {
+                    boost::asio::write(socket_, boost::asio::buffer("EXIT"));
+                    break;
+                }
+
+                boost::asio::write(socket_, boost::asio::buffer(message));
+            }
+        } catch (std::exception& e) {
+            std::cerr << "Error while sending message: " << e.what() << std::endl;
+        }
+    }
+
+    tcp::socket socket_;
 };
 
-int main() {
+int main(int argc, char* argv[]) {
     try {
-        boost::asio::io_service io_service;
-        Client client(io_service, "94.23.173.241", 12345, 12346);  // IP сервера и порты
-        client.start();
+        if (argc != 4) {
+            std::cerr << "Usage: client <host> <port> <client_id>" << std::endl;
+            return 1;
+        }
+
+        boost::asio::io_context io_context;
+        Client client(io_context, argv[1], std::atoi(argv[2]));
+        client.run(std::atoi(argv[3]));
     } catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
     }
+
+    return 0;
 }
