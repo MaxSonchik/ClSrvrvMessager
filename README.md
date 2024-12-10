@@ -32,3 +32,8 @@
 ```bash
 g++ -std=c++17 -o server boost_server.cpp -lboost_system -pthread
 g++ -std=c++17 -o client boost_client.cpp -lboost_system -pthread
+
+
+
+ЭТОТ ФАЙЛ УЖЕ НЕ АКТУАЛЕН, ЕГО БЫ ПЕРЕДЕЛАТЬ. МИНИ-УЧЕБНИК ПО MARKDOWN В TRAIN.MD
+
