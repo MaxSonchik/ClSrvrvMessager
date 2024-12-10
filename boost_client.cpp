@@ -20,7 +20,7 @@ public:
 
         std::thread reader_thread([this]() { read_messages(); });
 
-        main_menu();
+        chat_mode();
 
         reader_thread.join();
     }
@@ -38,44 +38,11 @@ private:
         }
     }
 
-    void main_menu() {
-        try {
-            while (true) {
-                std::cout << "\nMain Menu:\n";
-                std::cout << "1. Start chat with a user (Enter their ID)\n";
-                std::cout << "2. Exit chat\n";
-                std::cout << "Choice: ";
-                int choice;
-                std::cin >> choice;
-
-                if (choice == 1) {
-                    std::cout << "Enter recipient ID: ";
-                    int recipient_id;
-                    std::cin >> recipient_id;
-
-                    // Уведомляем сервер о начале диалога
-                    std::string start_command = "START:" + std::to_string(recipient_id);
-                    boost::asio::write(socket_, boost::asio::buffer(start_command));
-
-                    chat_mode();
-                } else if (choice == 2) {
-                    std::cout << "Exiting...\n";
-                    break;
-                }
-            }
-        } catch (std::exception& e) {
-            std::cerr << "Error: " << e.what() << std::endl;
-        }
-    }
-
     void chat_mode() {
         try {
-            std::cout << "Enter 'EXIT' to leave chat.\n";
-            std::cin.ignore(); // Очистить ввод
-
+            std::cout << "Enter your messages. Type 'EXIT' to quit.\n";
             while (true) {
                 std::string message;
-                std::cout << "You: ";
                 std::getline(std::cin, message);
 
                 if (message == "EXIT") {
@@ -93,16 +60,15 @@ private:
     tcp::socket socket_;
 };
 
-int main(int argc, char* argv[]) {
+int main() {
     try {
-        if (argc != 4) {
-            std::cerr << "Usage: client <host> <port> <client_id>" << std::endl;
-            return 1;
-        }
+        const std::string host = "95.24.130.86"; // Замените на нужный IP
+        const short port = 12345; // Замените на нужный порт
 
         boost::asio::io_context io_context;
-        Client client(io_context, argv[1], std::atoi(argv[2]));
-        client.run(std::atoi(argv[3]));
+        Client client(io_context, host, port);
+        static int client_id = 1; // Генерация ID клиента
+        client.run(client_id++);
     } catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
     }

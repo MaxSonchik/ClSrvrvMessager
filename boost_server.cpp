@@ -5,6 +5,7 @@
 #include <memory>
 #include <thread>
 #include <mutex>
+#include <atomic>
 
 using boost::asio::ip::tcp;
 
@@ -30,15 +31,11 @@ private:
 
     void handle_client(std::shared_ptr<tcp::socket> socket) {
         std::thread([this, socket]() {
-            int client_id = -1;
+            static std::atomic<int> next_client_id{1};
+            int client_id = next_client_id.fetch_add(1);
 
             try {
                 char data[1024];
-
-                // Получение ID клиента
-                size_t length = socket->read_some(boost::asio::buffer(data));
-                client_id = std::stoi(std::string(data, length));
-
                 {
                     std::lock_guard<std::mutex> lock(mutex_);
                     clients_[client_id] = socket;
@@ -46,20 +43,15 @@ private:
 
                 std::cout << "Client " << client_id << " connected." << std::endl;
 
-                int active_chat_id = -1;
-
                 while (true) {
-                    length = socket->read_some(boost::asio::buffer(data));
+                    size_t length = socket->read_some(boost::asio::buffer(data));
                     std::string message(data, length);
 
-                    if (message.find("START:") == 0) {
-                        active_chat_id = std::stoi(message.substr(6));
-                        std::cout << "Client " << client_id << " started chat with " << active_chat_id << std::endl;
-                    } else if (message == "EXIT") {
-                        active_chat_id = -1;
+                    if (message == "EXIT") {
                         std::cout << "Client " << client_id << " exited chat." << std::endl;
-                    } else if (active_chat_id != -1) {
-                        forward_message(client_id, active_chat_id, message);
+                        break;
+                    } else {
+                        std::cout << "Message from client " << client_id << ": " << message << std::endl;
                     }
                 }
             } catch (std::exception& e) {
@@ -68,27 +60,9 @@ private:
 
             {
                 std::lock_guard<std::mutex> lock(mutex_);
-                auto it = clients_.find(client_id);
-                if (it != clients_.end()) {
-                    clients_.erase(it);
-                }
+                clients_.erase(client_id);
             }
         }).detach();
-    }
-
-    void forward_message(int sender_id, int receiver_id, const std::string& message) {
-        std::lock_guard<std::mutex> lock(mutex_);
-        auto it = clients_.find(receiver_id);
-        if (it != clients_.end()) {
-            auto socket = it->second;
-            std::string full_message = std::to_string(sender_id) + ": " + message;
-            boost::asio::write(*socket, boost::asio::buffer(full_message));
-
-            // Логирование сообщения
-            log_message(sender_id, receiver_id, message);
-        } else {
-            std::cerr << "Receiver " << receiver_id << " not found." << std::endl;
-        }
     }
 
     void initialize_database() {
@@ -114,43 +88,18 @@ private:
         }
     }
 
-    void log_message(int sender_id, int receiver_id, const std::string& message) {
-        const char* sql = R"(
-            INSERT INTO messages (sender_id, receiver_id, message)
-            VALUES (?, ?, ?);
-        )";
-
-        sqlite3_stmt* stmt;
-        if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
-            throw std::runtime_error("Failed to prepare statement");
-        }
-
-        sqlite3_bind_int(stmt, 1, sender_id);
-        sqlite3_bind_int(stmt, 2, receiver_id);
-        sqlite3_bind_text(stmt, 3, message.c_str(), -1, SQLITE_STATIC);
-
-        if (sqlite3_step(stmt) != SQLITE_DONE) {
-            throw std::runtime_error("Failed to execute statement");
-        }
-
-        sqlite3_finalize(stmt);
-    }
-
     tcp::acceptor acceptor_;
     std::map<int, std::shared_ptr<tcp::socket>> clients_;
     std::mutex mutex_;
     sqlite3* db_;
 };
 
-int main(int argc, char* argv[]) {
+int main() {
     try {
-        if (argc != 2) {
-            std::cerr << "Usage: server <port>" << std::endl;
-            return 1;
-        }
+        const short port = 12345; // Замените на нужный порт
 
         boost::asio::io_context io_context;
-        Server server(io_context, std::atoi(argv[1]));
+        Server server(io_context, port);
         io_context.run();
     } catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
