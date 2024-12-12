@@ -1,4 +1,4 @@
-# Параметры компиляции
+# Компилятор и флаги
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Werror -Wextra -g -fpermissive -pthread
 LDFLAGS = -lboost_system -lsqlite3
@@ -6,10 +6,12 @@ LDFLAGS = -lboost_system -lsqlite3
 # Исходные файлы
 SERVER_SRC = boost_server.cpp
 CLIENT_SRC = boost_client.cpp
+UTILS_SRC = stun_utils.cpp
 
 # Объектные файлы
-SERVER_OBJ = boost_server.o
-CLIENT_OBJ = boost_client.o
+SERVER_OBJ = $(SERVER_SRC:.cpp=.o)
+CLIENT_OBJ = $(CLIENT_SRC:.cpp=.o)
+UTILS_OBJ = $(UTILS_SRC:.cpp=.o)
 
 # Исполнимые файлы
 SERVER_BIN = server
@@ -21,11 +23,11 @@ CLIENT_BIN = client
 all: $(SERVER_BIN) $(CLIENT_BIN)
 
 # Правила для сборки сервера
-$(SERVER_BIN): $(SERVER_OBJ)
+$(SERVER_BIN): $(SERVER_OBJ) $(UTILS_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 # Правила для сборки клиента
-$(CLIENT_BIN): $(CLIENT_OBJ)
+$(CLIENT_BIN): $(CLIENT_OBJ) $(UTILS_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
 # Правило для компиляции исходников в объектные файлы
@@ -34,7 +36,7 @@ $(CLIENT_BIN): $(CLIENT_OBJ)
 
 # Цель для чистки сгенерированных файлов
 clean:
-	rm -f $(SERVER_OBJ) $(CLIENT_OBJ) $(SERVER_BIN) $(CLIENT_BIN)
+	rm -f $(SERVER_OBJ) $(CLIENT_OBJ) $(UTILS_OBJ) $(SERVER_BIN) $(CLIENT_BIN)
 
 # Цель для форматирования с использованием clang-format
 clang-check:

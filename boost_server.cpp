@@ -1,4 +1,4 @@
-#include <boost/asio.hpp>
+/*#include <boost/asio.hpp>
 #include <sqlite3.h>
 #include <iostream>
 #include <map>
@@ -99,7 +99,7 @@ private:
 
 int main() {
     try {
-        const short port = 8080; // Замените на нужный порт
+        const short port = 8080; // ПОРТ!!!!!!!!!!!!!
 
         boost::asio::io_context io_context;
         Server server(io_context, port);
@@ -107,6 +107,42 @@ int main() {
         io_context.run();
     } catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
+    }
+
+    return 0;
+}
+*/
+
+#include <iostream>
+#include <boost/asio.hpp>
+
+using namespace boost::asio;
+using namespace boost::asio::ip;
+
+int main() {
+    try {
+        io_context io_context;
+
+        udp::socket socket(io_context, udp::endpoint(udp::v4(), 3478)); // STUN Server Port
+        udp::endpoint remote_endpoint;
+        std::array<char, 1024> recv_buffer;
+
+        std::cout << "STUN Server is running on port 3478..." << std::endl;
+
+        while (true) {
+            // Receive data from clients
+            size_t len = socket.receive_from(buffer(recv_buffer), remote_endpoint);
+            std::cout << "Received data from " << remote_endpoint.address().to_string()
+                      << ":" << remote_endpoint.port() << " - Length: " << len << std::endl;
+
+            // Stub response (custom STUN logic should be added here)
+            std::string response = "Sample STUN Response";
+            socket.send_to(buffer(response), remote_endpoint);
+            std::cout << "Response sent to client." << std::endl;
+        }
+
+    } catch (std::exception &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
     }
 
     return 0;
