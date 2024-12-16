@@ -1,50 +1,20 @@
-# Компилятор и флаги
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Werror -Wextra -g -fpermissive -pthread
-LDFLAGS = -lboost_system -lsqlite3
+CXXFLAGS = -std=c++17 -Wall -O2 -I./include
+LDFLAGS = -lboost_system -lpthread
 
-# Исходные файлы
-SERVER_SRC = boost_server.cpp
-CLIENT_SRC = boost_client.cpp
-UTILS_SRC = stun_utils.cpp
+SRCS = src/main_server.cpp src/main_client.cpp src/common.cpp src/stun.cpp src/stun_client.cpp src/tcp_server.cpp src/tcp_client.cpp src/udp_file_sender.cpp src/udp_file_receiver.cpp src/message.cpp src/file_transfer_protocol.cpp
+OBJS = $(SRCS:.cpp=.o)
 
-# Объектные файлы
-SERVER_OBJ = $(SERVER_SRC:.cpp=.o)
-CLIENT_OBJ = $(CLIENT_SRC:.cpp=.o)
-UTILS_OBJ = $(UTILS_SRC:.cpp=.o)
+all: server client
 
-# Исполнимые файлы
-SERVER_BIN = server
-CLIENT_BIN = client
+server: $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ src/main_server.o src/common.o src/stun.o src/stun_client.o src/tcp_server.o src/udp_file_sender.o src/udp_file_receiver.o src/message.o src/file_transfer_protocol.o $(LDFLAGS)
 
-.PHONY: all clean clang
+client: $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ src/main_client.o src/common.o src/stun.o src/stun_client.o src/tcp_client.o src/udp_file_sender.o src/udp_file_receiver.o src/message.o src/file_transfer_protocol.o $(LDFLAGS)
 
-# Цель по умолчанию (сборка всего)
-all: $(SERVER_BIN) $(CLIENT_BIN)
-
-# Правила для сборки сервера
-$(SERVER_BIN): $(SERVER_OBJ) $(UTILS_OBJ)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
-
-# Правила для сборки клиента
-$(CLIENT_BIN): $(CLIENT_OBJ) $(UTILS_OBJ)
-	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
-
-# Правило для компиляции исходников в объектные файлы
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Цель для чистки сгенерированных файлов
 clean:
-	rm -f $(SERVER_OBJ) $(CLIENT_OBJ) $(UTILS_OBJ) $(SERVER_BIN) $(CLIENT_BIN)
-
-# Цель для форматирования с использованием clang-format
-clang-check:
-	find . -name "*.cpp" | xargs clang-format -n
-
-clang-format:
-	find . -name "*.cpp" | xargs clang-format -i
-
-# Отладочная цель
-debug: CXXFLAGS += -DDEBUG
-debug: $(SERVER_BIN) $(CLIENT_BIN)
+	rm -f $(OBJS) server client
