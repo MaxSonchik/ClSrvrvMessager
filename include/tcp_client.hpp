@@ -16,10 +16,10 @@ public:
 private:
     Message read_message();
 
-    boost::asio::io_context ioc_;
-    boost::asio::ip::tcp::socket socket_;
     std::string server_ip_;
     uint16_t server_port_;
+    boost::asio::io_context ioc_;
+    boost::asio::ip::tcp::socket socket_;
 };
 
-#endif
+#endif 

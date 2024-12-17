@@ -7,17 +7,18 @@
 #include <string>
 #include "message.hpp"
 #include "common.hpp"
+#include "database.hpp"
 
 class TCPServer {
 public:
-    TCPServer(boost::asio::io_context &ioc, uint16_t port);
+    TCPServer(boost::asio::io_context &ioc, uint16_t port, const std::string &db_path);
     void start();
 
 private:
     void do_accept();
     void handle_client(std::shared_ptr<boost::asio::ip::tcp::socket> socket);
 
-    // Для упрощения - хранение информации о клиентах
+    Database db_;
     std::unordered_map<std::string, PublicEndpoint> clients_;
 
     boost::asio::io_context &ioc_;

@@ -1,10 +1,12 @@
 #include "../include/tcp_client.hpp"
+#include "../include/message.hpp"
 #include <boost/asio.hpp>
 
 using boost::asio::ip::tcp;
 
 TCPClient::TCPClient(const std::string &server_ip, uint16_t server_port)
-: server_ip_(server_ip), server_port_(server_port), socket_(ioc_) {}
+    : server_ip_(server_ip), server_port_(server_port), socket_(ioc_)
+{}
 
 void TCPClient::connect() {
     tcp::resolver resolver(ioc_);

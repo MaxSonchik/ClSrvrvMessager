@@ -5,9 +5,10 @@
 int main() {
     try {
         boost::asio::io_context ioc;
-        TCPServer server(ioc, SERVER_PORT);
+        std::string db_path = "./data/database.db";
+        TCPServer server(ioc, SERVER_PORT, db_path);
         server.start();
-    } catch(std::exception &e) {
+    } catch (std::exception &e) {
         log_error(e.what());
     }
     return 0;

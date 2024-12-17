@@ -5,8 +5,14 @@
 using namespace boost::asio;
 using tcp = ip::tcp;
 
-TCPServer::TCPServer(boost::asio::io_context &ioc, uint16_t port)
-: ioc_(ioc), acceptor_(ioc, tcp::endpoint(tcp::v4(), port)) {}
+TCPServer::TCPServer(boost::asio::io_context &ioc, uint16_t port, const std::string &db_path)
+: ioc_(ioc),
+  acceptor_(ioc, tcp::endpoint(tcp::v4(), port)),
+  db_(db_path)
+{
+    db_.init(); // Создаёт таблицу, если её нет
+}
+
 
 void TCPServer::start() {
     log_info("Server started on port " + std::to_string(SERVER_PORT));
