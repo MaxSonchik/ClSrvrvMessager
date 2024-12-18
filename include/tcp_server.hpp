@@ -18,10 +18,10 @@ private:
     void do_accept();
     void handle_client(std::shared_ptr<boost::asio::ip::tcp::socket> socket);
 
-    Database db_;
-    std::unordered_map<std::string, PublicEndpoint> clients_;
-
     boost::asio::io_context &ioc_;
+    Database db_;
+    std::unordered_map<std::string, PublicEndpoint> clients_; // хранит известных клиентов
+    std::unordered_map<std::string, std::shared_ptr<boost::asio::ip::tcp::socket>> sockets_; // чтобы знать кто онлайн
     boost::asio::ip::tcp::acceptor acceptor_;
 };
 

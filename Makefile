@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -O2 -I./include
+CXXFLAGS = -std=c++17 -Wall -Werror -Wextra -O2 -I./include
 LDFLAGS = -lboost_system -lpthread -lsqlite3
 
 SRCS_COMMON = src/common.cpp src/stun.cpp src/stun_client.cpp src/tcp_server.cpp src/tcp_client.cpp src/udp_file_sender.cpp src/udp_file_receiver.cpp src/message.cpp src/file_transfer_protocol.cpp src/database.cpp src/encryption.cpp

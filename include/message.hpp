@@ -8,23 +8,22 @@
 enum class MessageType : uint8_t {
     ClientRegistration = 1,
     Text,
-    FileOffer,       // Предложение отправить файл
-    FileAccept,      // Принятие файла
-    FileDataInfo     // Информация о файле
+    UserStatusRequest 
 };
+
 
 struct Message {
     MessageType type;
     std::string sender;
     std::string receiver;
-    std::string text;       // Для текстовых сообщений или IP
-    std::string filename;   // Имя файла
-    uint64_t file_size = 0; // Размер файла
+    std::string text;
+    std::string filename;
+    uint64_t file_size = 0;
+    std::string password; // Добавляем поле для пароля
 };
 
-// Сериализация/десериализация
+// serialize/deserialize объявление
 std::vector<uint8_t> serialize_message(const Message &msg);
 Message deserialize_message(const std::vector<uint8_t> &data);
 
-// Обертки для TCP: отправка с заголовком длины (4 байта длины)
 #endif

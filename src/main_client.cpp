@@ -1,47 +1,46 @@
 #include "../include/common.hpp"
-#include "../include/stun_client.hpp"
 #include "../include/tcp_client.hpp"
-#include "../include/udp_file_sender.hpp"
-#include "../include/udp_file_receiver.hpp"
 #include <iostream>
+#include <string>
 
-int main(int argc, char* argv[]) {
-    if(argc < 4) {
-        std::cerr << "Usage: client <server_ip> <username> <mode>\n"
-                  << "mode: send or receive\n";
-        return 1;
-    }
+int main() {
+    try {
+        std::string server_ip = "95.24.129.89";
+        std::string username;
+        std::string password;
 
-    std::string server_ip = argv[1];
-    std::string username = argv[2];
-    std::string mode = argv[3];
+        // Запрос логина и пароля у пользователя
+        std::cout << "Enter username: ";
+        std::cin >> username;
+        std::cout << "Enter password: ";
+        std::cin >> password;
 
-    StunClient stun(STUN_SERVER, STUN_PORT);
-    PublicEndpoint pub_ep = stun.get_public_endpoint();
+        // Подключение к серверу
+        TCPClient client(server_ip, SERVER_PORT);
+        client.connect();  // Сообщение об успешном подключении
+        std::cout << "Connected to server successfully!" << std::endl;
 
-    TCPClient client(server_ip, SERVER_PORT);
-    client.connect();
-    client.register_client(username, pub_ep);
+        // Формирование и отправка сообщения о регистрации
+        Message reg_msg;
+        reg_msg.type = MessageType::ClientRegistration;
+        reg_msg.sender = username;
+        reg_msg.password = password;
 
-    if (mode=="send") {
-        // Отправим текстовое сообщение
-        Message msg;
-        msg.type = MessageType::Text;
-        msg.sender = username;
-        msg.receiver = "another_user";
-        msg.text = "Hello from NATed client!";
-        client.send_message(msg);
+        client.send_message(reg_msg);
 
-        // Отправим файл (предположим, что another_user получил координаты)
-        boost::asio::io_context ioc;
-        UDPFileSender sender(ioc);
-        sender.send_file("test.txt", "203.0.113.10", FILE_TRANSFER_PORT);
+        // Получаем ответ от сервера
+        Message reply = client.receive_message();
 
-    } else if (mode=="receive") {
-        // Запустим прием файла
-        boost::asio::io_context ioc;
-        UDPFileReceiver receiver(ioc, FILE_TRANSFER_PORT, "received_test.txt");
-        receiver.start();
+        if (reply.text == "Ok") {
+            std::cout << "Authentication successful! Welcome, " << username << "!" << std::endl;
+            // Здесь начинается основная логика чата
+        } else if (reply.text == "Error") {
+            std::cerr << "Authentication failed: incorrect password or user." << std::endl;
+            return 1;
+        }
+
+    } catch (std::exception &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
     }
 
     return 0;

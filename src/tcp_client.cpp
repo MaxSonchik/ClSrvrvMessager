@@ -1,29 +1,19 @@
 #include "../include/tcp_client.hpp"
-#include "../include/message.hpp"
 #include <boost/asio.hpp>
+#include <iostream>
+#include <array>
+#include "../include/common.hpp"
 
 using boost::asio::ip::tcp;
 
 TCPClient::TCPClient(const std::string &server_ip, uint16_t server_port)
-    : server_ip_(server_ip), server_port_(server_port), socket_(ioc_)
-{}
+: server_ip_(server_ip), server_port_(server_port), socket_(ioc_) {}
 
 void TCPClient::connect() {
     tcp::resolver resolver(ioc_);
     auto endpoints = resolver.resolve(server_ip_, std::to_string(server_port_));
     boost::asio::connect(socket_, endpoints);
     log_info("Connected to server");
-}
-
-void TCPClient::register_client(const std::string &username, const PublicEndpoint &pub_ep) {
-    Message msg;
-    msg.type = MessageType::ClientRegistration;
-    msg.sender = username;
-    msg.text = pub_ep.ip;
-    msg.file_size = pub_ep.port;
-
-    auto data = serialize_message(msg);
-    boost::asio::write(socket_, boost::asio::buffer(data));
 }
 
 void TCPClient::send_message(const Message &msg) {

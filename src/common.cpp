@@ -1,4 +1,5 @@
 #include "../include/common.hpp"
+#include <iostream>
 
 void log_info(const std::string &msg) {
     std::cout << "[INFO] " << msg << "\n";

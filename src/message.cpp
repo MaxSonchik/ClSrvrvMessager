@@ -1,79 +1,76 @@
 #include "../include/message.hpp"
-#include "../include/common.hpp"
-
-#include <vector>
 #include <cstring>
-#include <arpa/inet.h> // для htonl/ntohl
 
+static uint32_t read_uint32(const std::vector<uint8_t> &data, size_t &offset) {
+    uint32_t val = 0;
+    for (int i=0; i<4; i++) {
+        val |= ((uint32_t)data[offset++] << (i*8));
+    }
+    return val;
+}
+
+static void write_uint32(std::vector<uint8_t> &data, uint32_t val) {
+    for (int i=0; i<4; i++) {
+        data.push_back((val >> (i*8)) & 0xFF);
+    }
+}
+
+static void write_string(std::vector<uint8_t> &data, const std::string &s) {
+    write_uint32(data, (uint32_t)s.size());
+    data.insert(data.end(), s.begin(), s.end());
+}
+
+static std::string read_string(const std::vector<uint8_t> &data, size_t &offset) {
+    uint32_t size = read_uint32(data, offset);
+    std::string s(size, '\0');
+    for (uint32_t i=0; i<size; i++) {
+        s[i] = (char)data[offset++];
+    }
+    return s;
+}
 
 std::vector<uint8_t> serialize_message(const Message &msg) {
-    std::vector<uint8_t> data;
-    data.push_back((uint8_t)msg.type);
-
-    auto write_str = [&](const std::string &s) {
-        uint32_t size = (uint32_t)s.size();
-        uint32_t size_net = htonl(size);
-        const uint8_t* p = (const uint8_t*)&size_net;
-        data.insert(data.end(), p, p+4);
-        data.insert(data.end(), s.begin(), s.end());
-    };
-
-    write_str(msg.sender);
-    write_str(msg.receiver);
-    write_str(msg.text);
-    write_str(msg.filename);
+    // format:
+    // [type(1 byte)]
+    // sender(str), receiver(str), text(str), filename(str), password(str)
+    // file_size(8 bytes)
+    std::vector<uint8_t> d;
+    d.push_back((uint8_t)msg.type);
+    write_string(d, msg.sender);
+    write_string(d, msg.receiver);
+    write_string(d, msg.text);
+    write_string(d, msg.filename);
+    write_string(d, msg.password);
 
     uint64_t fs = msg.file_size;
     for (int i=0; i<8; i++) {
-        data.push_back((uint8_t)(fs & 0xFF));
+        d.push_back((uint8_t)(fs & 0xFF));
         fs >>= 8;
     }
 
-    // Добавляем 4 байта длины всего сообщения
+    // prepend length
     std::vector<uint8_t> result;
-    uint32_t total_size = (uint32_t)data.size();
-    uint32_t total_size_net = htonl(total_size);
-    const uint8_t* sz_ptr = (const uint8_t*)&total_size_net;
-    result.insert(result.end(), sz_ptr, sz_ptr+4);
-    result.insert(result.end(), data.begin(), data.end());
-
+    write_uint32(result, (uint32_t)d.size());
+    result.insert(result.end(), d.begin(), d.end());
     return result;
 }
 
-// Убедитесь, что deserialize_message вызывается после того, как уже прочитана длина.
 Message deserialize_message(const std::vector<uint8_t> &data) {
     Message msg;
     size_t offset = 0;
 
-    auto read_uint8 = [&](uint8_t &val) {
-        val = data[offset++];
-    };
-
-    auto read_uint32 = [&](uint32_t &val) {
-        uint32_t tmp = 0;
-        for (int i=0;i<4;i++){
-            tmp |= ((uint32_t)data[offset++] << (i*8));
-        }
-        val = tmp;
-    };
-
-    auto read_str = [&](std::string &s) {
-        uint32_t size;
-        read_uint32(size);
-        s.resize(size);
-        for (uint32_t i=0;i<size;i++){
-            s[i]=(char)data[offset++];
-        }
-    };
-
-    uint8_t t;
-    read_uint8(t);
+    // здесь предполагается, что длина уже прочитана, и "data" это уже payload без первых 4 байт длины.
+    // Но согласно предыдущему коду, data уже без длины.
+    // Если вы передаете data с длиной, сначала прочитайте length.
+    // Предположим, data уже без length.
+    uint8_t t = data[offset++];
     msg.type = (MessageType)t;
 
-    read_str(msg.sender);
-    read_str(msg.receiver);
-    read_str(msg.text);
-    read_str(msg.filename);
+    msg.sender = read_string(data, offset);
+    msg.receiver = read_string(data, offset);
+    msg.text = read_string(data, offset);
+    msg.filename = read_string(data, offset);
+    msg.password = read_string(data, offset);
 
     uint64_t fs = 0;
     for (int i=0;i<8;i++) {
