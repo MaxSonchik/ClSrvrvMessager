@@ -1,4 +1,4 @@
-# ⁺˚⋆｡°✩₊✩°｡⋆˚⁺<span style="background-color: purple">ClSrvrvMessager</span>⁺˚⋆｡°✩₊✩°｡⋆˚⁺
+# <p align="center"> ⁺˚⋆｡°✩₊✩°｡⋆˚⁺</p> <p align="center"> <div style="color: blue; font-weight: bold;">ClSrvrvMessager</div></p>⁺˚⋆｡°✩₊✩°｡⋆˚⁺
 
 **ClSrvrvMessager** Проект представляет собой простой мессенджер с клиент-серверной архитектурой, написанный на C++ с использованием библиотеки Boost.Asio. Он включает:
   - Сервер, слушающий TCP-подключения от клиентов. Клиенты могут регистрироваться, отправлять и получать текстовые сообщения через сервер
