@@ -1,4 +1,4 @@
-# <span style="background-color: purple">ClSrvrvMessager</span>
+# ⁺˚⋆｡°✩₊✩°｡⋆˚⁺<span style="background-color: purple">ClSrvrvMessager</span>⁺˚⋆｡°✩₊✩°｡⋆˚⁺
 
 **ClSrvrvMessager** Проект представляет собой простой мессенджер с клиент-серверной архитектурой, написанный на C++ с использованием библиотеки Boost.Asio. Он включает:
   - Сервер, слушающий TCP-подключения от клиентов. Клиенты могут регистрироваться, отправлять и получать текстовые сообщения через сервер
@@ -17,7 +17,7 @@
 4. Основные возможности
 5. Cтруктура проекта
 7. Установка и запуск 
-   - Клиент  //эмод
+   - Клиент 
    - Сервер
 8. Примеры реализации 
 ***
@@ -110,14 +110,17 @@ src/:
   <summary>file_transfer_protocol.cpp</summary>
    реализация протокола передачи файлов
 </details>
+
+<details>
+  <summary>encryption.cpp</summary>
+  реализация XOR шифрования
+</details>
+
 <details>
   <summary>database.cpp</summary>
    описание взаимодействия с базами данных
+</details>
 
-</details>
-<summary>encryption.cpp</summary>
-   реализация XOR шифрования
-</details>
 
 Makefile
 <details>
