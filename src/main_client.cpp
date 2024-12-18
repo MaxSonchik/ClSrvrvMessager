@@ -1,46 +1,64 @@
 #include "../include/common.hpp"
 #include "../include/tcp_client.hpp"
+#include "../include/udp_file_sender.hpp"
 #include <iostream>
 #include <string>
 
 int main() {
     try {
+        // Инициализация
         std::string server_ip = "95.24.129.89";
-        std::string username;
-        std::string password;
+        uint16_t server_port = SERVER_PORT;
+        uint16_t udp_port = SERVER_PORT + 1;
 
-        // Запрос логина и пароля у пользователя
+        // Подключение клиента
+        TCPClient client(server_ip, server_port);
+        client.connect();
+
+        // Авторизация пользователя
+        std::string username, password;
         std::cout << "Enter username: ";
         std::cin >> username;
         std::cout << "Enter password: ";
         std::cin >> password;
 
-        // Подключение к серверу
-        TCPClient client(server_ip, SERVER_PORT);
-        client.connect();  // Сообщение об успешном подключении
-        std::cout << "Connected to server successfully!" << std::endl;
+        client.register_client(username, password);
+        std::cout << "Connected to the server and registered!\n";
 
-        // Формирование и отправка сообщения о регистрации
-        Message reg_msg;
-        reg_msg.type = MessageType::ClientRegistration;
-        reg_msg.sender = username;
-        reg_msg.password = password;
+        // Основной цикл
+        boost::asio::io_context ioc;
+        UDPFileSender udp_sender(ioc);
 
-        client.send_message(reg_msg);
+        while (true) {
+            std::string input;
+            std::cout << "> ";
+            std::getline(std::cin >> std::ws, input);
 
-        // Получаем ответ от сервера
-        Message reply = client.receive_message();
+            if (input == "/exit") {
+                std::cout << "Exiting...\n";
+                break;
+            } else if (input.compare(0, 11, "/send_file ") == 0) {
+                std::string file_path = input.substr(11);
+                if (udp_sender.send_file(file_path, server_ip, udp_port)) {
+                    std::cout << "File sent successfully!\n";
+                } else {
+                    std::cerr << "Failed to send file.\n";
+                }
+            } else {
+                // Отправка обычного сообщения
+                Message msg;
+                msg.type = MessageType::Text;
+                msg.sender = username;
+                msg.text = input;
 
-        if (reply.text == "Ok") {
-            std::cout << "Authentication successful! Welcome, " << username << "!" << std::endl;
-            // Здесь начинается основная логика чата
-        } else if (reply.text == "Error") {
-            std::cerr << "Authentication failed: incorrect password or user." << std::endl;
-            return 1;
+                client.send_message(msg);
+                Message reply = client.receive_message();
+                std::cout << "Server: " << reply.text << "\n";
+            }
         }
 
     } catch (std::exception &e) {
-        std::cerr << "Error: " << e.what() << std::endl;
+        log_error("Error: " + std::string(e.what()));
     }
 
     return 0;

@@ -2,7 +2,7 @@
 #include "../include/encryption.hpp"
 #include <iostream>
 
-static const std::string KEY = "my_simple_key"; // Для простого XOR шифрования пароля, предположим что есть xor_encrypt/xor_decrypt
+static const std::string KEY = "wfgvkljsdfjvikofdsjvkdfsjvkodsfjvksdfjvkdjfkvjkdvjkcvjbikofdjhvbiursthgbiusehvjisenvsdfklsdvhjkosdfhjjksdfhjnvj"; 
 
 
 

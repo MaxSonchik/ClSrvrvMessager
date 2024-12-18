@@ -15,6 +15,17 @@ void TCPClient::connect() {
     boost::asio::connect(socket_, endpoints);
     log_info("Connected to server");
 }
+void TCPClient::register_client(const std::string &username, const std::string &password) {
+    Message msg;
+    msg.type = MessageType::ClientRegistration;
+    msg.sender = username;
+    msg.text = password;
+
+    auto data = serialize_message(msg);
+    boost::asio::write(socket_, boost::asio::buffer(data));
+}
+
+
 
 void TCPClient::send_message(const Message &msg) {
     auto data = serialize_message(msg);

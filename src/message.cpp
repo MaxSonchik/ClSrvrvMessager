@@ -48,7 +48,6 @@ std::vector<uint8_t> serialize_message(const Message &msg) {
         fs >>= 8;
     }
 
-    // prepend length
     std::vector<uint8_t> result;
     write_uint32(result, (uint32_t)d.size());
     result.insert(result.end(), d.begin(), d.end());
@@ -59,10 +58,6 @@ Message deserialize_message(const std::vector<uint8_t> &data) {
     Message msg;
     size_t offset = 0;
 
-    // здесь предполагается, что длина уже прочитана, и "data" это уже payload без первых 4 байт длины.
-    // Но согласно предыдущему коду, data уже без длины.
-    // Если вы передаете data с длиной, сначала прочитайте length.
-    // Предположим, data уже без length.
     uint8_t t = data[offset++];
     msg.type = (MessageType)t;
 

@@ -10,6 +10,8 @@ public:
     TCPClient(const std::string &server_ip, uint16_t server_port);
     void connect();
     void send_message(const Message &msg);
+    void register_client(const std::string &username, const std::string &password);
+
     Message receive_message();
 
 private:
