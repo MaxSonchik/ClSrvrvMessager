@@ -17,8 +17,13 @@ server: $(OBJS_SERVER)
 client: $(OBJS_CLIENT)
 	$(CXX) $(CXXFLAGS) -o $@ $(OBJS_CLIENT) $(LDFLAGS)
 
+test: $(filter-out src/main_server.o, $(OBJS_SERVER)) tests/test.cpp
+	$(CXX) $(CXXFLAGS) tests/test.cpp $(filter-out src/main_server.o, $(OBJS_SERVER)) -o test $(LDFLAGS) -lboost_unit_test_framework
+	./test
+
+
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS_SERVER) $(OBJS_CLIENT) server client
+	rm -f $(OBJS_SERVER) $(OBJS_CLIENT) server client test

@@ -29,6 +29,13 @@ public:
      * @param server_port Порт сервера. Тип: uint16_t.
      */
     TCPClient(const std::string &server_ip, uint16_t server_port);
+    
+    /**
+     * @brief Деструктор класса TCPClient
+
+     */
+    ~TCPClient(); 
+
     /**
      * @brief Устанавливает подключение к серверу.
      *
@@ -82,5 +89,5 @@ private:
     uint16_t server_port_; //Порт сервера
     boost::asio::io_context ioc_; //Контекст ввода-вывода для работы с Boost.Asio
     boost::asio::ip::tcp::socket socket_; // Сокет для подключения к серверу
-
+};
 #endif

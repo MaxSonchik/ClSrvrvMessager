@@ -24,14 +24,18 @@ void TCPServer::start() {
 
 void TCPServer::do_accept() {
     auto socket = std::make_shared<tcp::socket>(ioc_);
-    acceptor_.async_accept(*socket, [this, socket](boost::system::error_code ec){
+    acceptor_.async_accept(*socket, [this, socket](boost::system::error_code ec) {
         if (!ec) {
             log_info("New client connected");
             handle_client(socket);
+        } else {
+            log_error("Error accepting client: " + ec.message());
         }
         do_accept();
     });
 }
+
+
 
 static void async_read_msg(std::shared_ptr<tcp::socket> socket, std::function<void(Message)> handler) {
     auto length_buf = std::make_shared<std::vector<uint8_t>>(4);
