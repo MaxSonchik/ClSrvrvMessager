@@ -4,10 +4,17 @@
 #include <string>
 #include <cstdint>
 
+
 static const std::string STUN_SERVER = "stun.l.google.com";
 static const uint16_t STUN_PORT = 19302;
 static const uint16_t SERVER_PORT = 5000;
 
+/**
+ * @brief Структура для хранения публичной конечной точки.
+ *
+ * Представляет IP-адрес и порт клиента или сервера,
+ * полученные с помощью STUN.
+ */
 struct PublicEndpoint {
     std::string ip;
     uint16_t port;
