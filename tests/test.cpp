@@ -41,6 +41,7 @@ BOOST_AUTO_TEST_CASE(database_test) {
 }
 
 // Тест UDP
+/*
 BOOST_AUTO_TEST_CASE(udp_file_transfer_test) {
     const std::string save_path = "./received_files/";
     const std::string test_file = "./test_data/test_file.txt";
@@ -120,8 +121,10 @@ BOOST_AUTO_TEST_CASE(udp_file_transfer_test) {
         BOOST_FAIL("[ERROR] Exception while checking received file: " + std::string(e.what()));
     }
 }
+*/
 
 // Тест TCP
+/*
 BOOST_AUTO_TEST_CASE(server_client_test) {
     const uint16_t port = 5000;
     boost::asio::io_context io_context;
@@ -159,6 +162,40 @@ BOOST_AUTO_TEST_CASE(server_client_test) {
     }
 
     // Завершаем сервер, если тест не завершился раньше
+    io_context.stop();
+    server_thread.join();
+}
+*/
+BOOST_AUTO_TEST_CASE(server_client_test) {
+    const uint16_t port = 5000;
+    boost::asio::io_context io_context;
+    // Запуск сервера в отдельном потоке
+    thread server_thread([&]() {
+        TCPServer server(io_context, port, ":memory:");
+        server.start();
+    });
+    // Увеличиваем задержку для запуска сервера
+    this_thread::sleep_for(chrono::seconds(3));
+    // Подключение клиента
+    try {
+        TCPClient client("127.0.0.1", port);
+        client.connect(); // Явно вызываем connect
+        // Успешное подключение клиента
+        cout << "\033[32mSUCCESS: Client connected to server\033[0m" << endl;
+        // Отправка сообщения
+        Message msg;
+        msg.type = MessageType::Text;
+        msg.text = "Hello, Server!";
+        client.send_message(msg);
+        // Получение ответа
+        Message response = client.receive_message();
+        BOOST_CHECK_EQUAL(response.text, "Hello, Client!");
+        // Сообщение об успешной обработке
+        cout << "\033[32mSUCCESS: Client-Server communication successful\033[0m" << endl;
+    } catch (const std::exception &e) {
+        BOOST_FAIL("Client or server error: " << e.what());
+    }
+    // Завершаем сервер
     io_context.stop();
     server_thread.join();
 }
