@@ -1,19 +1,21 @@
 #ifndef DATABASE_HPP
 #define DATABASE_HPP
 
-#include <string>
+#include <sqlite3.h>
+
 #include <cstdint>
 #include <stdexcept>
-#include <sqlite3.h>
+#include <string>
 
 /**
  * @class Database
  * @brief Класс для управления базой данных SQLite.
  *
- * Этот класс предоставляет методы для инициализации базы данных, добавления пользователей,аутентификации и обновления информации о пользователях,проверки существования пользователя.
+ * Этот класс предоставляет методы для инициализации базы данных, добавления пользователей,аутентификации и обновления
+ * информации о пользователях,проверки существования пользователя.
  */
 class Database {
-public:
+   public:
     /**
      * @brief Конструктор для создания объекта базы данных.
      *
@@ -61,7 +63,8 @@ public:
      * @return true, если аутентификация прошла успешно и данные обновлены.
      * @return false, если аутентификация не удалась.
      */
-    bool authenticate_and_update(const std::string &username, const std::string &password, const std::string &ip, uint16_t port);
+    bool authenticate_and_update(const std::string &username, const std::string &password, const std::string &ip,
+                                 uint16_t port);
     /**
      * @brief Проверяет существование пользователя.
      *
@@ -73,7 +76,7 @@ public:
      */
     bool user_exists(const std::string &username);
 
-private:
+   private:
     sqlite3 *db_;
 };
 

@@ -9,14 +9,14 @@
 static const uint32_t STUN_MAGIC_COOKIE = 0x2112A442;
 
 /**
- * @brief 
+ * @brief
  * Формирование STUN Binding Request.
  * Возвращает полностью сформированный STUN пакет (20-байтовый заголовок + атрибуты, если будут).
  * В данном случае без атрибутов, только заголовок.
- * 
+ *
  */
 std::vector<uint8_t> build_stun_binding_request();
-/** 
+/**
  * Парсинг STUN Binding Success Response.
  * На вход подаётся полученный от сервера буфер данных.
  * Возвращает true, если удалось извлечь публичный IP и порт.

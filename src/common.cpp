@@ -1,5 +1,7 @@
 #include "../include/common.hpp"
+
 #include <iostream>
+<<<<<<< HEAD
 /**
  * @brief Выводит информационное сообщение.
  *
@@ -22,3 +24,9 @@ void log_info(const std::string &msg) {
 void log_error(const std::string &msg) {
     std::cerr << "[ERROR] " << msg << "\n";
 }
+=======
+
+void log_info(const std::string &msg) { std::cout << "[INFO] " << msg << "\n"; }
+
+void log_error(const std::string &msg) { std::cerr << "[ERROR] " << msg << "\n"; }
+>>>>>>> 5b7bf873fc0ad5481df1d8d45a6690206b0d4f47

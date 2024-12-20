@@ -1,9 +1,11 @@
 #include "../include/stun_client.hpp"
-#include "../include/stun.hpp"
-#include "../include/common.hpp"
+
 #include <boost/asio.hpp>
-#include <vector>
 #include <string>
+#include <vector>
+
+#include "../include/common.hpp"
+#include "../include/stun.hpp"
 
 StunClient::StunClient(const std::string &stun_server, uint16_t stun_port)
     : stun_server_(stun_server), stun_port_(stun_port) {}
@@ -44,7 +46,7 @@ PublicEndpoint StunClient::get_public_endpoint() {
 
     resp.resize(len);
     std::string ip;
-    uint16_t port=0;
+    uint16_t port = 0;
     if (parse_stun_binding_response(resp, ip, port)) {
         PublicEndpoint ep;
         ep.ip = ip;

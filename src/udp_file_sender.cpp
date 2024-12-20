@@ -1,18 +1,18 @@
 #include "../include/udp_file_sender.hpp"
-#include "../include/file_transfer_protocol.hpp"
-#include "../include/common.hpp"
 
+#include <boost/asio.hpp>
+#include <chrono>
 #include <fstream>
 #include <thread>
-#include <chrono>
-#include <boost/asio.hpp>
 
-UDPFileSender::UDPFileSender(boost::asio::io_context &ioc)
-: ioc_(ioc), socket_(ioc, boost::asio::ip::udp::v4()) {}
+#include "../include/common.hpp"
+#include "../include/file_transfer_protocol.hpp"
+
+UDPFileSender::UDPFileSender(boost::asio::io_context &ioc) : ioc_(ioc), socket_(ioc, boost::asio::ip::udp::v4()) {}
 
 bool UDPFileSender::send_file(const std::string &file_path, const std::string &dest_ip, uint16_t dest_port) {
     std::ifstream file(file_path, std::ios::binary);
-    if(!file) {
+    if (!file) {
         log_error("File not found: " + file_path);
         return false;
     }
@@ -23,14 +23,13 @@ bool UDPFileSender::send_file(const std::string &file_path, const std::string &d
     std::vector<uint8_t> block(BLOCK_SIZE);
     uint32_t block_number = 0;
 
-    while(true) {
-        file.read((char*)block.data(), BLOCK_SIZE);
+    while (true) {
+        file.read((char *)block.data(), BLOCK_SIZE);
         std::streamsize bytes_read = file.gcount();
-        if (bytes_read<=0) break;
+        if (bytes_read <= 0) break;
         block.resize((size_t)bytes_read);
 
-        if(!send_block(block_number, block, endpoint))
-            return false;
+        if (!send_block(block_number, block, endpoint)) return false;
         block_number++;
         block.resize(BLOCK_SIZE);
     }
@@ -38,18 +37,18 @@ bool UDPFileSender::send_file(const std::string &file_path, const std::string &d
     return true;
 }
 
-bool UDPFileSender::send_block(uint32_t block_number, const std::vector<uint8_t> &block_data, boost::asio::ip::udp::endpoint &endpoint) {
+bool UDPFileSender::send_block(uint32_t block_number, const std::vector<uint8_t> &block_data,
+                               boost::asio::ip::udp::endpoint &endpoint) {
     FileDataPacket pkt;
     pkt.block_number = block_number;
     pkt.data = block_data;
     auto data = serialize_data_packet(pkt);
 
     int retries = 5;
-    while(retries>0) {
+    while (retries > 0) {
         boost::system::error_code ec;
         socket_.send_to(boost::asio::buffer(data), endpoint, 0, ec);
-        if (wait_for_ack(block_number))
-            return true;
+        if (wait_for_ack(block_number)) return true;
         retries--;
     }
     log_error("Failed to get ACK for block " + std::to_string(block_number));
@@ -61,12 +60,12 @@ bool UDPFileSender::wait_for_ack(uint32_t block_number) {
     boost::system::error_code ec;
     boost::asio::ip::udp::endpoint remote_ep;
 
-    for (int i=0; i<100; i++) {
+    for (int i = 0; i < 100; i++) {
         size_t len = socket_.receive_from(boost::asio::buffer(buffer_), remote_ep, 0, ec);
-        if(!ec && len>0) {
+        if (!ec && len > 0) {
             FileAckPacket ack;
-            std::vector<uint8_t> v(buffer_.begin(), buffer_.begin()+len);
-            if(parse_ack_packet(v, ack)) {
+            std::vector<uint8_t> v(buffer_.begin(), buffer_.begin() + len);
+            if (parse_ack_packet(v, ack)) {
                 if (ack.block_number == block_number) {
                     return true;
                 }

@@ -2,9 +2,10 @@
 #define STUN_CLIENT_HPP
 
 #include <string>
+
 #include "common.hpp"
 
- /**
+/**
  * @class StunClient
  * @brief Класс для работы с STUN-сервером.
  *
@@ -12,7 +13,7 @@
  * о публичном IP-адресе и порте устройства, что позволяет преодолеть NAT.
  */
 class StunClient {
-public:
+   public:
     /**
      * @brief Конструктор класса `StunClient`.
      *
@@ -24,9 +25,9 @@ public:
     StunClient(const std::string &stun_server, uint16_t stun_port);
     PublicEndpoint get_public_endpoint();
 
-private:
-    std::string stun_server_; ///Адрес STUN-сервера
-    uint16_t stun_port_; ///Порт STUN-сервера
+   private:
+    std::string stun_server_;  /// Адрес STUN-сервера
+    uint16_t stun_port_;       /// Порт STUN-сервера
 };
 
 #endif

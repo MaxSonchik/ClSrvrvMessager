@@ -1,9 +1,9 @@
 #ifndef UDP_FILE_RECEIVER_HPP
 #define UDP_FILE_RECEIVER_HPP
 
-#include <string>
 #include <boost/asio.hpp>
 #include <fstream>
+#include <string>
 
 /**
  * @brief UDPFileReceiver
@@ -11,8 +11,8 @@
  *
  */
 class UDPFileReceiver {
-public:
-/**
+   public:
+    /**
      * @brief Конструктор класса `UDPFileReceiver`.
      *
      * Инициализирует приемник с контекстом ввода-вывода, портом для приема
@@ -32,7 +32,7 @@ public:
      */
     void start();
 
-private:
+   private:
     /**
      * @brief Ожидает и принимает данные.
      *
@@ -50,13 +50,13 @@ private:
      */
     void send_ack(uint32_t block_number, const boost::asio::ip::udp::endpoint &sender_ep);
 
-    boost::asio::io_context &ioc_; // Контекст ввода-вывода для Boost.Asio
-    boost::asio::ip::udp::socket socket_; //UDP-сокет для приема данных
-    boost::asio::ip::udp::endpoint sender_ep_; //Точка назначения для подтверждений
-    std::string save_path_; //Путь для сохранения полученного файла  
-    std::ofstream ofs_; //Поток для записи данных в файл
-    uint32_t expected_block_ = 0; //Ожидаемый номер следующего блока данных
-    std::array<uint8_t, 2048> buffer_; //Буфер для хранения получаемых данных
+    boost::asio::io_context &ioc_;              // Контекст ввода-вывода для Boost.Asio
+    boost::asio::ip::udp::socket socket_;       // UDP-сокет для приема данных
+    boost::asio::ip::udp::endpoint sender_ep_;  // Точка назначения для подтверждений
+    std::string save_path_;             // Путь для сохранения полученного файла
+    std::ofstream ofs_;                 // Поток для записи данных в файл
+    uint32_t expected_block_ = 0;       // Ожидаемый номер следующего блока данных
+    std::array<uint8_t, 2048> buffer_;  // Буфер для хранения получаемых данных
 };
 
 #endif

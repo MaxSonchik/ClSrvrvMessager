@@ -8,6 +8,4 @@ std::string xor_encrypt(const std::string &input, const std::string &key) {
     return out;
 }
 
-std::string xor_decrypt(const std::string &input, const std::string &key) {
-    return xor_encrypt(input, key);
-}
+std::string xor_decrypt(const std::string &input, const std::string &key) { return xor_encrypt(input, key); }
