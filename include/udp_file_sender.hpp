@@ -1,31 +1,30 @@
 #ifndef UDP_FILE_SENDER_HPP
 #define UDP_FILE_SENDER_HPP
 
-#include <string>
 #include <boost/asio.hpp>
-#include <fstream>
-#include <thread>
 #include <chrono>
+#include <fstream>
+#include <string>
+#include <thread>
 
 /**
  * @class UDPFileSender
  * @brief Класс для отправки файлов через протокол UDP.
- * 
+ *
  * `public`:
- * 
+ *
  * Конструктор класса `UDPFileSender`
- * 
+ *
  * Инициализирует объект для отправки файлов через UDP. Создается сокет
  * для передачи данных, а также подготавливается контекст ввода-вывода
- * 
+ *
  * @param ioc Контекст ввода-вывода для Boost.Asio. Используется для работы с сокетами.
  * Тип: boost::asio::io_context&
- * 
- * 
+ *
+ *
  */
 class UDPFileSender {
-public:
-
+   public:
     UDPFileSender(boost::asio::io_context &ioc);
     /**
      * @brief Отправляет файл через UDP.
@@ -40,7 +39,7 @@ public:
      */
     bool send_file(const std::string &file_path, const std::string &dest_ip, uint16_t dest_port);
 
-private:
+   private:
     /**
      * @brief Отправляет один блок данных.
      *
@@ -52,7 +51,8 @@ private:
      * @return Возвращает `true`, если блок был успешно отправлен и подтверждение получено.
      *         В противном случае возвращает `false`.
      */
-    bool send_block(uint32_t block_number, const std::vector<uint8_t> &block_data, boost::asio::ip::udp::endpoint &endpoint);
+    bool send_block(uint32_t block_number, const std::vector<uint8_t> &block_data,
+                    boost::asio::ip::udp::endpoint &endpoint);
     /**
      * @brief Ожидает подтверждение получения блока.
      *
@@ -63,9 +63,9 @@ private:
      */
     bool wait_for_ack(uint32_t block_number);
 
-    boost::asio::io_context &ioc_; //Контекст ввода-вывода для Boost.Asio
-    boost::asio::ip::udp::socket socket_; //UDP-сокет для отправки данных
-    std::array<uint8_t, 2048> buffer_; //Буфер для хранения данных для отправки
+    boost::asio::io_context &ioc_;         // Контекст ввода-вывода для Boost.Asio
+    boost::asio::ip::udp::socket socket_;  // UDP-сокет для отправки данных
+    std::array<uint8_t, 2048> buffer_;     // Буфер для хранения данных для отправки
 };
 
 #endif

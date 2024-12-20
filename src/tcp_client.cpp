@@ -1,17 +1,16 @@
 #include "../include/tcp_client.hpp"
+
+#include <array>
 #include <boost/asio.hpp>
 #include <iostream>
-#include <array>
-#include "message.hpp" 
-#include "../include/common.hpp"
 
+#include "../include/common.hpp"
+#include "message.hpp"
 
 using boost::asio::ip::tcp;
 
 TCPClient::TCPClient(const std::string &server_ip, uint16_t server_port)
     : server_ip_(server_ip), server_port_(server_port), socket_(ioc_) {}
-
-
 
 TCPClient::~TCPClient() {
     if (socket_.is_open()) {
@@ -23,8 +22,6 @@ TCPClient::~TCPClient() {
     }
 }
 
-
-
 void TCPClient::connect() {
     try {
         boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::make_address(server_ip_), server_port_);
@@ -35,7 +32,6 @@ void TCPClient::connect() {
     }
 }
 
-
 void TCPClient::register_client(const std::string &username, const std::string &password) {
     Message msg;
     msg.type = MessageType::ClientRegistration;
@@ -44,8 +40,6 @@ void TCPClient::register_client(const std::string &username, const std::string &
     msg.text = "Registering";
     send_message(msg);
 }
-
-
 
 void TCPClient::send_message(const Message &msg) {
     if (!socket_.is_open()) {
@@ -59,8 +53,6 @@ void TCPClient::send_message(const Message &msg) {
         throw std::runtime_error("Error sending message: " + std::string(e.what()));
     }
 }
-
-
 
 Message TCPClient::receive_message() {
     try {
@@ -78,12 +70,10 @@ Message TCPClient::receive_message() {
     }
 }
 
-
-
 Message TCPClient::read_message() {
-    std::array<uint8_t,4> length_bytes;
+    std::array<uint8_t, 4> length_bytes;
     boost::asio::read(socket_, boost::asio::buffer(length_bytes));
-    uint32_t length = length_bytes[0] | (length_bytes[1]<<8) | (length_bytes[2]<<16) | (length_bytes[3]<<24);
+    uint32_t length = length_bytes[0] | (length_bytes[1] << 8) | (length_bytes[2] << 16) | (length_bytes[3] << 24);
     std::vector<uint8_t> buf(length);
     boost::asio::read(socket_, boost::asio::buffer(buf));
     return deserialize_message(buf);

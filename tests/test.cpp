@@ -1,20 +1,20 @@
 
 #define BOOST_TEST_MODULE MessengerTests
-#include <boost/test/included/unit_test.hpp>
-#include <thread>
-#include <chrono>
 #include <boost/asio.hpp>
+#include <boost/test/included/unit_test.hpp>
+#include <chrono>
 #include <filesystem>
-#include "encryption.hpp"
-#include "tcp_server.hpp"
-#include "tcp_client.hpp"
+#include <thread>
+
 #include "../include/database.hpp"
+#include "encryption.hpp"
+#include "tcp_client.hpp"
+#include "tcp_server.hpp"
 #include "udp_file_receiver.hpp"
 #include "udp_file_sender.hpp"
 #include "udp_file_server.hpp"
 
 using boost::asio::ip::udp;
-
 
 using namespace std;
 // Тест шифрования
@@ -39,9 +39,6 @@ BOOST_AUTO_TEST_CASE(database_test) {
     // Сообщение об успешной проверке
     cout << "\033[32mSUCCESS: Database operations successful\033[0m" << endl;
 }
-
-
-
 
 // Тест UDP
 BOOST_AUTO_TEST_CASE(udp_file_transfer_test) {
@@ -124,7 +121,7 @@ BOOST_AUTO_TEST_CASE(udp_file_transfer_test) {
     }
 }
 
-// Тест TCP 
+// Тест TCP
 BOOST_AUTO_TEST_CASE(server_client_test) {
     const uint16_t port = 5000;
     boost::asio::io_context io_context;
@@ -141,7 +138,7 @@ BOOST_AUTO_TEST_CASE(server_client_test) {
     // Подключение клиента
     try {
         TCPClient client("127.0.0.1", port);
-        client.connect(); // Явно вызываем connect
+        client.connect();  // Явно вызываем connect
 
         // Успешное подключение клиента
         std::cout << "\033[32mSUCCESS: Client connected to server\033[0m" << std::endl;
@@ -156,8 +153,8 @@ BOOST_AUTO_TEST_CASE(server_client_test) {
         // Выводим сообщение о завершении всех тестов
         std::cout << "\033[32mAll tests completed!\033[0m" << std::endl;
 
-        return; // Прерываем тест на этом этапе
-    } catch (const std::exception &e) {
+        return;  // Прерываем тест на этом этапе
+    } catch (const std::exception& e) {
         BOOST_FAIL("Client or server error: " << e.what());
     }
 

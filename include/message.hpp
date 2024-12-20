@@ -1,27 +1,23 @@
 #ifndef MESSAGE_HPP
 #define MESSAGE_HPP
 
+#include <cstdint>
 #include <string>
 #include <vector>
-#include <cstdint>
 
 /**
  * @enum MessageType
  * @brief Типы сообщений в системе.
  *
  * Определяет типы сообщений, которые используются в мессенджере:
- * 
+ *
  * - `ClientRegistration`: Регистрация клиента.
- * 
+ *
  * - `Text`: Текстовое сообщение.
- * 
+ *
  * - `UserStatusRequest`: Запрос статуса пользователя.
  */
-enum class MessageType : uint8_t {
-    ClientRegistration = 1,
-    Text,
-    UserStatusRequest 
-};
+enum class MessageType : uint8_t { ClientRegistration = 1, Text, UserStatusRequest };
 
 /**
  * @struct Message
@@ -29,19 +25,19 @@ enum class MessageType : uint8_t {
  *
  * Содержит информацию о типе сообщения, отправителе, получателе, тексте,
  * передаваемом файле, размере файла и дополнительных данных (например, пароль).
- * 
+ *
  * - MessageType type;      Тип сообщения (например, текст или регистрация).
- * 
+ *
  * - std::string sender - Имя или идентификатор отправителя.
- * 
+ *
  * - std::string receiver - Имя или идентификатор получателя.
- * 
+ *
  * - std::string text - Текст сообщения (если есть).
- * 
+ *
  * - std::string filename - Имя файла (если сообщение связано с файлом).
- * 
+ *
  * - uint64_t file_size -Размер файла в байтах (по умолчанию 0).
- * 
+ *
  * - std::string password - Поле для передачи пароля
  */
 struct Message {

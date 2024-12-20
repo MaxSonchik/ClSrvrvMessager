@@ -25,8 +25,8 @@ std::string xor_encrypt(const std::string &input, const std::string &key);
  * @param input Входная строка для дешифрования. Тип: std::string.
  * @param key Ключ для дешифрования. Тип: std::string.
  * @return std::string Расшифрованная строка.
- * 
- * 
+ *
+ *
  */
 std::string xor_decrypt(const std::string &input, const std::string &key);
 

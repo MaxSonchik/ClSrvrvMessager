@@ -1,10 +1,11 @@
 #include "../include/database.hpp"
-#include "../include/encryption.hpp"
+
 #include <iostream>
 
-static const std::string KEY = "wfgvkljsdfjvikofdsjvkdfsjvkodsfjvksdfjvkdjfkvjkdvjkcvjbikofdjhvbiursthgbiusehvjisenvsdfklsdvhjkosdfhjjksdfhjnvj"; 
+#include "../include/encryption.hpp"
 
-
+static const std::string KEY =
+    "wfgvkljsdfjvikofdsjvkdfsjvkodsfjvksdfjvkdjfkvjkdvjkcvjbikofdjhvbiursthgbiusehvjisenvsdfklsdvhjkosdfhjjksdfhjnvj";
 
 Database::Database(const std::string &db_path) {
     if (sqlite3_open(db_path.c_str(), &db_) != SQLITE_OK) {
@@ -32,7 +33,8 @@ void Database::init() {
     }
 }
 
-bool Database::add_user(const std::string &username, const std::string &password, const std::string &ip, uint16_t port) {
+bool Database::add_user(const std::string &username, const std::string &password, const std::string &ip,
+                        uint16_t port) {
     std::string encrypted_password = xor_encrypt(password, KEY);
 
     const char *sql = "INSERT INTO users (username, password_hash, ip, port) VALUES (?, ?, ?, ?);";
@@ -62,10 +64,11 @@ bool Database::user_exists(const std::string &username) {
     return exists;
 }
 
-bool Database::authenticate_and_update(const std::string &username, const std::string &password, const std::string &ip, uint16_t port) {
+bool Database::authenticate_and_update(const std::string &username, const std::string &password, const std::string &ip,
+                                       uint16_t port) {
     // Если нет пользователя - добавляем
     if (!user_exists(username)) {
-        return add_user(username, password, ip, port); 
+        return add_user(username, password, ip, port);
     }
 
     // Иначе проверяем пароль
@@ -79,7 +82,7 @@ bool Database::authenticate_and_update(const std::string &username, const std::s
     bool user_ok = false;
     if (sqlite3_step(stmt) == SQLITE_ROW) {
         const unsigned char *db_hash = sqlite3_column_text(stmt, 0);
-        if (db_hash) stored_hash = (const char*)db_hash;
+        if (db_hash) stored_hash = (const char *)db_hash;
         user_ok = true;
     }
     sqlite3_finalize(stmt);

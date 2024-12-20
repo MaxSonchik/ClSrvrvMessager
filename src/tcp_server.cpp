@@ -1,16 +1,15 @@
 #include "../include/tcp_server.hpp"
-#include "../include/message.hpp"
+
 #include <boost/asio.hpp>
 #include <iostream>
+
+#include "../include/message.hpp"
 
 using namespace boost::asio;
 using tcp = ip::tcp;
 
 TCPServer::TCPServer(boost::asio::io_context &ioc, uint16_t port, const std::string &db_path)
-: ioc_(ioc)
-, db_(db_path)
-, acceptor_(ioc, tcp::endpoint(ip::make_address("0.0.0.0"), port))
-{
+    : ioc_(ioc), db_(db_path), acceptor_(ioc, tcp::endpoint(ip::make_address("0.0.0.0"), port)) {
     db_.init();
     log_info("Server created on IP 95.24.129.89 and port " + std::to_string(port));
 }
@@ -18,7 +17,7 @@ TCPServer::TCPServer(boost::asio::io_context &ioc, uint16_t port, const std::str
 void TCPServer::start() {
     log_info("Server started on port " + std::to_string(SERVER_PORT));
     do_accept();
-    std::cout<<"Listening......"<<std::endl;
+    std::cout << "Listening......" << std::endl;
     ioc_.run();
 }
 
@@ -35,17 +34,16 @@ void TCPServer::do_accept() {
     });
 }
 
-
-
 static void async_read_msg(std::shared_ptr<tcp::socket> socket, std::function<void(Message)> handler) {
     auto length_buf = std::make_shared<std::vector<uint8_t>>(4);
-    async_read(*socket, buffer(*length_buf), [socket, length_buf, handler](boost::system::error_code ec, std::size_t){
-        if(ec) return;
-        uint32_t msg_length = (uint32_t)((*length_buf)[0] | ((*length_buf)[1]<<8) | ((*length_buf)[2]<<16) | ((*length_buf)[3]<<24));
+    async_read(*socket, buffer(*length_buf), [socket, length_buf, handler](boost::system::error_code ec, std::size_t) {
+        if (ec) return;
+        uint32_t msg_length = (uint32_t)((*length_buf)[0] | ((*length_buf)[1] << 8) | ((*length_buf)[2] << 16) |
+                                         ((*length_buf)[3] << 24));
 
         auto msg_buf = std::make_shared<std::vector<uint8_t>>(msg_length);
-        async_read(*socket, buffer(*msg_buf), [socket, msg_buf, handler](boost::system::error_code ec, std::size_t){
-            if(ec) return;
+        async_read(*socket, buffer(*msg_buf), [socket, msg_buf, handler](boost::system::error_code ec, std::size_t) {
+            if (ec) return;
             Message msg = deserialize_message(*msg_buf);
             handler(msg);
         });
@@ -53,7 +51,7 @@ static void async_read_msg(std::shared_ptr<tcp::socket> socket, std::function<vo
 }
 
 void TCPServer::handle_client(std::shared_ptr<tcp::socket> socket) {
-    async_read_msg(socket, [this, socket](Message msg){
+    async_read_msg(socket, [this, socket](Message msg) {
         if (msg.type == MessageType::ClientRegistration) {
             std::string username = msg.sender;
             std::string password = msg.password;
@@ -72,7 +70,7 @@ void TCPServer::handle_client(std::shared_ptr<tcp::socket> socket) {
                 // новый пользователь
                 reply.text = "Ok";
                 reply.filename = "new";
-                clients_[username] = {ip,port};
+                clients_[username] = {ip, port};
                 sockets_[username] = socket;
             } else if (user_ex && auth) {
                 // существующий пользователь + верный пароль
@@ -86,7 +84,7 @@ void TCPServer::handle_client(std::shared_ptr<tcp::socket> socket) {
             }
 
             std::vector<uint8_t> out = serialize_message(reply);
-            async_write(*socket, buffer(out), [this,socket](auto,auto){});
+            async_write(*socket, buffer(out), [this, socket](auto, auto) {});
             // После ответа, продолжаем читать новые сообщения
             handle_client(socket);
         } else if (msg.type == MessageType::UserStatusRequest) {
@@ -101,19 +99,18 @@ void TCPServer::handle_client(std::shared_ptr<tcp::socket> socket) {
                 status_reply.text = "offline";
             }
             std::vector<uint8_t> out = serialize_message(status_reply);
-            async_write(*socket, buffer(out), [this,socket](auto,auto){});
+            async_write(*socket, buffer(out), [this, socket](auto, auto) {});
             handle_client(socket);
         } else if (msg.type == MessageType::Text) {
             // Пересылаем сообщение
             auto it = sockets_.find(msg.receiver);
-            if (it!=sockets_.end()) {
+            if (it != sockets_.end()) {
                 std::vector<uint8_t> out = serialize_message(msg);
-                async_write(*(it->second), buffer(out), [](auto,auto){});
+                async_write(*(it->second), buffer(out), [](auto, auto) {});
             } else {
-                std::cout<<"ATTENTION: User is offline"<<std::endl;
+                std::cout << "ATTENTION: User is offline" << std::endl;
             }
             handle_client(socket);
         }
     });
 }
-

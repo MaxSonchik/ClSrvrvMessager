@@ -3,14 +3,15 @@
 
 #include <boost/asio.hpp>
 #include <memory>
-#include <unordered_map>
 #include <string>
-#include "message.hpp"
+#include <unordered_map>
+
 #include "common.hpp"
 #include "database.hpp"
+#include "message.hpp"
 
 class TCPServer {
-public:
+   public:
     /**
      * @brief Конструктор класса `TCPServer`.
      *
@@ -30,13 +31,13 @@ public:
      */
     void start();
 
-private:
-/**
+   private:
+    /**
      * @brief Принимает входящие подключения от клиентов.
      *
      * Метод ожидает подключения клиентов, а затем вызывает обработчик для каждого
      * подключившегося клиента.
-     * 
+     *
      */
     void do_accept();
     /**
@@ -50,11 +51,12 @@ private:
      */
     void handle_client(std::shared_ptr<boost::asio::ip::tcp::socket> socket);
 
-    boost::asio::io_context &ioc_; //Контекст ввода-вывода для Boost.Asio.
-    Database db_; //Экземпляр базы данных для работы с клиентскими данными
-    std::unordered_map<std::string, PublicEndpoint> clients_; //Хранит известных клиентов с их публичными адресами
-    std::unordered_map<std::string, std::shared_ptr<boost::asio::ip::tcp::socket>> sockets_; // Хранит информацию о подключенных клиентах
-    boost::asio::ip::tcp::acceptor acceptor_;//Аксептор для прослушивания входящих подключений
+    boost::asio::io_context &ioc_;  // Контекст ввода-вывода для Boost.Asio.
+    Database db_;  // Экземпляр базы данных для работы с клиентскими данными
+    std::unordered_map<std::string, PublicEndpoint> clients_;  // Хранит известных клиентов с их публичными адресами
+    std::unordered_map<std::string, std::shared_ptr<boost::asio::ip::tcp::socket>>
+        sockets_;  // Хранит информацию о подключенных клиентах
+    boost::asio::ip::tcp::acceptor acceptor_;  // Аксептор для прослушивания входящих подключений
 };
 
 #endif
