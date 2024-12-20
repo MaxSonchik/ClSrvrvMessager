@@ -10,7 +10,7 @@ SRCS_CLIENT = src/main_client.cpp $(SRCS_COMMON)
 OBJS_SERVER = $(SRCS_SERVER:.cpp=.o)
 OBJS_CLIENT = $(SRCS_CLIENT:.cpp=.o)
 
-all: server client
+all: clangcheck server client
 
 server: $(OBJS_SERVER)
 	$(CXX) $(CXXFLAGS) -o $@ $(OBJS_SERVER) $(LDFLAGS)
@@ -22,6 +22,8 @@ tests: $(filter-out src/main_server.o, $(OBJS_SERVER)) tests/test.cpp
 	$(CXX) $(CXXFLAGS) tests/test.cpp $(filter-out src/main_server.o, $(OBJS_SERVER)) -o test $(LDFLAGS) -lboost_unit_test_framework
 	./test
 
+#sudo apt install clang
+#sudo apt install clang-format
 clangfix:
 	clang-format -i $(SRCS_COMMON) $(HEADERS_COMMON) src/main_server.cpp src/main_client.cpp tests/test.cpp
 
@@ -31,5 +33,5 @@ clangcheck:
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-clean:
-	rm -f $(OBJS_SERVER) $(OBJS_CLIENT) server client test
+clean: 
+	clang-format -i $(SRCS_COMMON) $(HEADERS_COMMON) src/main_server.cpp src/main_client.cpp tests/test.cpp && rm -f $(OBJS_SERVER) $(OBJS_CLIENT) server client test

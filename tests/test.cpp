@@ -179,7 +179,7 @@ BOOST_AUTO_TEST_CASE(server_client_test) {
     // Подключение клиента
     try {
         TCPClient client("127.0.0.1", port);
-        client.connect(); // Явно вызываем connect
+        client.connect();  // Явно вызываем connect
         // Успешное подключение клиента
         cout << "\033[32mSUCCESS: Client connected to server\033[0m" << endl;
         // Отправка сообщения
