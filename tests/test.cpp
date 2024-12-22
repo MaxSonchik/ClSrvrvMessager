@@ -7,12 +7,12 @@
 #include <thread>
 
 #include "../include/database.hpp"
-#include "encryption.hpp"
-#include "tcp_client.hpp"
-#include "tcp_server.hpp"
-#include "udp_file_receiver.hpp"
-#include "udp_file_sender.hpp"
-#include "udp_file_server.hpp"
+#include "../include/encryption.hpp"
+#include "../include/tcp_client.hpp"
+#include "../include/tcp_server.hpp"
+#include "../include/udp_file_receiver.hpp"
+#include "../include/udp_file_sender.hpp"
+#include "../include/udp_file_server.hpp"
 
 using boost::asio::ip::udp;
 
@@ -28,7 +28,7 @@ BOOST_AUTO_TEST_CASE(encryption_test) {
     cout << "\033[32mSUCCESS: Encryption and decryption successful\033[0m" << endl;
 }
 
-// Тест бд
+// Тест DB
 BOOST_AUTO_TEST_CASE(database_test) {
     Database db(":memory:");
     db.init();

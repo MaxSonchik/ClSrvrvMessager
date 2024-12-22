@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package messenger;
+
+// Определение сервиса
+service Messenger {
+    rpc SendMessage (MessageRequest) returns (MessageResponse);
+    rpc ReceiveMessages (Empty) returns (stream Message);
+}
+
+// Запрос сообщения
+message MessageRequest {
+    string user = 1;
+    string message = 2;
+}
+
+// Ответ на отправку сообщения
+message MessageResponse {
+    bool success = 1;
+}
+
+// Стриминг сообщений
+message Message {
+    string user = 1;
+    string text = 2;
+    string timestamp = 3;
+}
+
+message Empty {}
