@@ -10,8 +10,9 @@
 #include "database.hpp"
 #include "message.hpp"
 
-class TCPServer {
-   public:
+class TCPServer
+{
+  public:
     /**
      * @brief Конструктор класса `TCPServer`.
      *
@@ -22,7 +23,7 @@ class TCPServer {
      * @param port Порт для прослушивания входящих подключений. Тип: uint16_t.
      * @param db_path Путь к базе данных для работы с клиентами. Тип: std::string.
      */
-    TCPServer(boost::asio::io_context &ioc, uint16_t port, const std::string &db_path);
+    TCPServer(boost::asio::io_context& ioc, uint16_t port, const std::string& db_path);
     /**
      * @brief Запускает сервер и начинает прием подключений.
      *
@@ -31,7 +32,7 @@ class TCPServer {
      */
     void start();
 
-   private:
+  private:
     /**
      * @brief Принимает входящие подключения от клиентов.
      *
@@ -51,12 +52,13 @@ class TCPServer {
      */
     void handle_client(std::shared_ptr<boost::asio::ip::tcp::socket> socket);
 
-    boost::asio::io_context &ioc_;                             // Контекст ввода-вывода для Boost.Asio.
-    Database db_;                                              // Экземпляр базы данных для работы с клиентскими данными
-    std::unordered_map<std::string, PublicEndpoint> clients_;  // Хранит известных клиентов с их публичными адресами
+    boost::asio::io_context& ioc_; // Контекст ввода-вывода для Boost.Asio.
+    Database db_;                  // Экземпляр базы данных для работы с клиентскими данными
+    std::unordered_map<std::string, PublicEndpoint>
+        clients_; // Хранит известных клиентов с их публичными адресами
     std::unordered_map<std::string, std::shared_ptr<boost::asio::ip::tcp::socket>>
-        sockets_;                              // Хранит информацию о подключенных клиентах
-    boost::asio::ip::tcp::acceptor acceptor_;  // Аксептор для прослушивания входящих подключений
+        sockets_;                             // Хранит информацию о подключенных клиентах
+    boost::asio::ip::tcp::acceptor acceptor_; // Аксептор для прослушивания входящих подключений
 };
 
 #endif

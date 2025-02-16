@@ -19,7 +19,8 @@ static const uint16_t SERVER_PORT = 5000;
  *
  * // uint16_t port - Публичный порт конечной точки (например, 5000)
  */
-struct PublicEndpoint {
+struct PublicEndpoint
+{
     std::string ip;
     uint16_t port;
 };
@@ -33,7 +34,7 @@ struct PublicEndpoint {
  * @param msg Сообщение для записи в лог. Тип: std::string.
  * @details
  */
-void log_info(const std::string &msg);
+void log_info(const std::string& msg);
 /**
  * @brief Функция,которая логирует сообщение об ошибке.
  *
@@ -43,6 +44,6 @@ void log_info(const std::string &msg);
  * @param msg Сообщение для записи в лог об ошибке. Тип: std::string.
  * @details
  */
-void log_error(const std::string &msg);
+void log_error(const std::string& msg);
 
 #endif

@@ -17,7 +17,12 @@
  *
  * - `UserStatusRequest`: Запрос статуса пользователя.
  */
-enum class MessageType : uint8_t { ClientRegistration = 1, Text, UserStatusRequest };
+enum class MessageType : uint8_t
+{
+    ClientRegistration = 1,
+    Text,
+    UserStatusRequest
+};
 
 /**
  * @struct Message
@@ -40,7 +45,8 @@ enum class MessageType : uint8_t { ClientRegistration = 1, Text, UserStatusReque
  *
  * - std::string password - Поле для передачи пароля
  */
-struct Message {
+struct Message
+{
     MessageType type;
     std::string sender;
     std::string receiver;
@@ -57,7 +63,7 @@ struct Message {
  * @param msg Сообщение для сериализации.
  * @return std::vector<uint8_t> Сериализованное сообщение в виде массива байтов.
  */
-std::vector<uint8_t> serialize_message(const Message &msg);
+std::vector<uint8_t> serialize_message(const Message& msg);
 
 /**
  * @brief Десериализует массив байтов в структуру сообщения.
@@ -68,6 +74,6 @@ std::vector<uint8_t> serialize_message(const Message &msg);
  * @return Message Десериализованное сообщение.
  * @throws std::runtime_error Если данные некорректны или повреждены.
  */
-Message deserialize_message(const std::vector<uint8_t> &data);
+Message deserialize_message(const std::vector<uint8_t>& data);
 
 #endif

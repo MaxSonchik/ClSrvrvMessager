@@ -23,6 +23,6 @@ std::vector<uint8_t> build_stun_binding_request();
  * @param ip  запись IP
  * @param port  запись порта
  */
-bool parse_stun_binding_response(const std::vector<uint8_t> &data, std::string &ip, uint16_t &port);
+bool parse_stun_binding_response(const std::vector<uint8_t>& data, std::string& ip, uint16_t& port);
 
 #endif

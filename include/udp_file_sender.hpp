@@ -23,9 +23,10 @@
  *
  *
  */
-class UDPFileSender {
-   public:
-    UDPFileSender(boost::asio::io_context &ioc);
+class UDPFileSender
+{
+  public:
+    UDPFileSender(boost::asio::io_context& ioc);
     /**
      * @brief Отправляет файл через UDP.
      *
@@ -35,11 +36,12 @@ class UDPFileSender {
      * @param file_path Путь к файлу, который необходимо отправить. Тип: std::string.
      * @param dest_ip IP-адрес получателя. Тип: std::string.
      * @param dest_port Порт получателя. Тип: uint16_t.
-     * @return Возвращает `true`, если файл был успешно отправлен. В случае ошибки возвращает `false`.
+     * @return Возвращает `true`, если файл был успешно отправлен. В случае ошибки возвращает
+     * `false`.
      */
-    bool send_file(const std::string &file_path, const std::string &dest_ip, uint16_t dest_port);
+    bool send_file(const std::string& file_path, const std::string& dest_ip, uint16_t dest_port);
 
-   private:
+  private:
     /**
      * @brief Отправляет один блок данных.
      *
@@ -51,21 +53,22 @@ class UDPFileSender {
      * @return Возвращает `true`, если блок был успешно отправлен и подтверждение получено.
      *         В противном случае возвращает `false`.
      */
-    bool send_block(uint32_t block_number, const std::vector<uint8_t> &block_data,
-                    boost::asio::ip::udp::endpoint &endpoint);
+    bool send_block(uint32_t block_number, const std::vector<uint8_t>& block_data,
+                    boost::asio::ip::udp::endpoint& endpoint);
     /**
      * @brief Ожидает подтверждение получения блока.
      *
      * Метод ждет ACK-пакет от получателя с подтверждением получения блока данных.
      *
      * @param block_number Номер блока, для которого ожидается подтверждение. Тип: uint32_t.
-     * @return Возвращает `true`, если подтверждение получено. В противном случае возвращает `false`.
+     * @return Возвращает `true`, если подтверждение получено. В противном случае возвращает
+     * `false`.
      */
     bool wait_for_ack(uint32_t block_number);
 
-    boost::asio::io_context &ioc_;         // Контекст ввода-вывода для Boost.Asio
-    boost::asio::ip::udp::socket socket_;  // UDP-сокет для отправки данных
-    std::array<uint8_t, 2048> buffer_;     // Буфер для хранения данных для отправки
+    boost::asio::io_context& ioc_;        // Контекст ввода-вывода для Boost.Asio
+    boost::asio::ip::udp::socket socket_; // UDP-сокет для отправки данных
+    std::array<uint8_t, 2048> buffer_;    // Буфер для хранения данных для отправки
 };
 
 #endif

@@ -3,12 +3,13 @@
 
 #include <sqlite3.h>
 
-#include <cstdint>  // Для uint16_t
+#include <cstdint> // Для uint16_t
 #include <stdexcept>
 #include <string>
 
-class Database {
-   public:
+class Database
+{
+  public:
     Database(const std::string& db_path);
     ~Database();
 
@@ -16,15 +17,17 @@ class Database {
     bool is_initialized() const;
 
     bool user_exists(const std::string& username);
-    bool create_user(const std::string& username, const std::string& password_hash, const std::string& salt);
+    bool create_user(const std::string& username, const std::string& password_hash,
+                     const std::string& salt);
     bool authenticate_user(const std::string& username, const std::string& password);
-    bool authenticate_and_update(const std::string& username, const std::string& password, const std::string& ip,
-                                 uint16_t port);
+    bool authenticate_and_update(const std::string& username, const std::string& password,
+                                 const std::string& ip, uint16_t port);
     bool update_connection_info(const std::string& username, const std::string& ip, uint16_t port);
 
-    bool save_message(const std::string& sender, const std::string& receiver, const std::string&text);
+    bool save_message(const std::string& sender, const std::string& receiver,
+                      const std::string& text);
 
-   private:
+  private:
     sqlite3* db_;
     std::string db_path_;
     bool is_initialized_;
@@ -33,4 +36,4 @@ class Database {
     void check_db_connection() const;
 };
 
-#endif  // DATABASE_HPP
+#endif // DATABASE_HPP

@@ -1,4 +1,7 @@
 ---
-BasedOnStyle: Google
+BasedOnStyle: LLVM
 IndentWidth: 4
-ColumnLimit: 120
+UseTab: ForIndentation
+PointerAlignment: Left
+BreakBeforeBraces: Allman
+ColumnLimit: 100

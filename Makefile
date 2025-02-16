@@ -1,6 +1,6 @@
 CXX = g++
-CXXFLAGS = -g -O0 -std=c++17 -Wall -Werror -Wextra -O2 -I./include -I/usr/include
-LDFLAGS = -lboost_system -lpthread -lsqlite3 -largon2
+CXXFLAGS =  -fprofile-arcs -ftest-coverage -g -O0 -std=c++17 -Wall -Werror -Wextra -O2 -I./include -I/usr/include
+LDFLAGS = -lboost_system -lpthread -lsqlite3 -largon2 
 
 SRCS_COMMON = src/common.cpp src/stun.cpp src/stun_client.cpp src/tcp_server.cpp src/tcp_client.cpp src/udp_file_sender.cpp src/udp_file_receiver.cpp src/message.cpp src/file_transfer_protocol.cpp src/database.cpp src/encryption.cpp
 HEADERS_COMMON = include/common.hpp include/stun.hpp include/stun_client.hpp include/tcp_server.hpp include/tcp_client.hpp include/udp_file_sender.hpp include/udp_file_receiver.hpp include/message.hpp include/file_transfer_protocol.hpp include/database.hpp include/encryption.hpp
@@ -28,7 +28,9 @@ tests: $(filter-out src/main_server.o, $(OBJS_SERVER)) tests/test.cpp
 
 clean:
 	rm -f $(OBJS_SERVER) $(OBJS_CLIENT) server client test $(LINTERFILES)
-
+	rm -f src/*.gcda src/*.gcno src/*.gcov 
+	rm -rf reports/  
+	
 # ===================== ЛИНТЕРЫ =====================
 
 
@@ -82,3 +84,22 @@ full_sanitize_server:
 
 full_sanitize_client:
 	$(CXX) $(CXXFLAGS) -fsanitize=address,undefined -g -o client_sanitize $(SRCS_CLIENT) $(LDFLAGS)
+
+
+
+# ===================== GCOV (ПОКРЫТИЕ ТЕСТАМИ) =====================
+
+gcov: tests  
+	mkdir -p reports
+	echo "Generating GCOV reports..."
+	gcov -b -c $(SRCS_COMMON) > reports/gcov_report.txt  
+
+lcov: tests  
+	mkdir -p reports
+	echo "Capturing lcov coverage data..."
+	lcov --capture --directory . --output-file reports/coverage.info
+	genhtml reports/coverage.info --output-directory reports/html
+	echo "Coverage report available in reports/html/index.html"
+
+open_report:
+	xdg-open reports/html/index.html || open reports/html/index.html  

@@ -10,8 +10,9 @@
  * @brief Класс для приема файлов через протокол UDP.
  *
  */
-class UDPFileReceiver {
-   public:
+class UDPFileReceiver
+{
+  public:
     /**
      * @brief Конструктор класса `UDPFileReceiver`.
      *
@@ -22,7 +23,7 @@ class UDPFileReceiver {
      * @param port Порт для прослушивания входящих сообщений. Тип: uint16_t.
      * @param save_path Путь для сохранения полученного файла. Тип: std::string.
      */
-    UDPFileReceiver(boost::asio::io_context &ioc, uint16_t port, const std::string &save_path);
+    UDPFileReceiver(boost::asio::io_context& ioc, uint16_t port, const std::string& save_path);
     /**
      * @brief Запускает прием данных.
      *
@@ -31,8 +32,9 @@ class UDPFileReceiver {
      * отправляет подтверждения (ACK).
      */
     void start();
+    void stop();
 
-   private:
+  private:
     /**
      * @brief Ожидает и принимает данные.
      *
@@ -46,17 +48,18 @@ class UDPFileReceiver {
      * Отправляет ACK-пакет с номером блока для подтверждения получения данных.
      *
      * @param block_number Номер блока данных. Тип: uint32_t.
-     * @param sender_ep Точка назначения (IP-адрес и порт отправителя). Тип: boost::asio::ip::udp::endpoint.
+     * @param sender_ep Точка назначения (IP-адрес и порт отправителя). Тип:
+     * boost::asio::ip::udp::endpoint.
      */
-    void send_ack(uint32_t block_number, const boost::asio::ip::udp::endpoint &sender_ep);
+    void send_ack(uint32_t block_number, const boost::asio::ip::udp::endpoint& sender_ep);
 
-    boost::asio::io_context &ioc_;              // Контекст ввода-вывода для Boost.Asio
-    boost::asio::ip::udp::socket socket_;       // UDP-сокет для приема данных
-    boost::asio::ip::udp::endpoint sender_ep_;  // Точка назначения для подтверждений
-    std::string save_path_;                     // Путь для сохранения полученного файла
-    std::ofstream ofs_;                         // Поток для записи данных в файл
-    uint32_t expected_block_ = 0;               // Ожидаемый номер следующего блока данных
-    std::array<uint8_t, 2048> buffer_;          // Буфер для хранения получаемых данных
+    boost::asio::io_context& ioc_;             // Контекст ввода-вывода для Boost.Asio
+    boost::asio::ip::udp::socket socket_;      // UDP-сокет для приема данных
+    boost::asio::ip::udp::endpoint sender_ep_; // Точка назначения для подтверждений
+    std::string save_path_;                    // Путь для сохранения полученного файла
+    std::ofstream ofs_;                        // Поток для записи данных в файл
+    uint32_t expected_block_ = 0;              // Ожидаемый номер следующего блока данных
+    std::array<uint8_t, 2048> buffer_;         // Буфер для хранения получаемых данных
 };
 
 #endif

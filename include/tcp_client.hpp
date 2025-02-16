@@ -19,8 +19,9 @@
  *
  * - Получения сообщений от сервера.
  */
-class TCPClient {
-   public:
+class TCPClient
+{
+  public:
     /**
      * @brief Конструктор класса `TCPClient`.
      *
@@ -29,7 +30,7 @@ class TCPClient {
      * @param server_ip IP-адрес сервера. Тип: std::string.
      * @param server_port Порт сервера. Тип: uint16_t.
      */
-    TCPClient(const std::string &server_ip, uint16_t server_port);
+    TCPClient(const std::string& server_ip, uint16_t server_port);
 
     /**
      * @brief Деструктор класса TCPClient
@@ -54,7 +55,7 @@ class TCPClient {
      * @param msg Сообщение для отправки. Тип: Message.
      *
      */
-    void send_message(const Message &msg);
+    void send_message(const Message& msg);
     /**
      * @brief Регистрирует клиента на сервере.
      *
@@ -65,7 +66,7 @@ class TCPClient {
      * @param password Пароль пользователя. Тип: std::string.
      *
      */
-    void register_client(const std::string &username, const std::string &password);
+    void register_client(const std::string& username, const std::string& password);
     /**
      * @brief Получает сообщение от сервера.
      *
@@ -76,7 +77,7 @@ class TCPClient {
      */
     Message receive_message();
 
-   private:
+  private:
     /**
      * @brief Считывает сообщение из сокета.
      *
@@ -86,9 +87,9 @@ class TCPClient {
      */
     Message read_message();
 
-    std::string server_ip_;                // IP-адрес сервера
-    uint16_t server_port_;                 // Порт сервера
-    boost::asio::io_context ioc_;          // Контекст ввода-вывода для работы с Boost.Asio
-    boost::asio::ip::tcp::socket socket_;  // Сокет для подключения к серверу
+    std::string server_ip_;               // IP-адрес сервера
+    uint16_t server_port_;                // Порт сервера
+    boost::asio::io_context ioc_;         // Контекст ввода-вывода для работы с Boost.Asio
+    boost::asio::ip::tcp::socket socket_; // Сокет для подключения к серверу
 };
 #endif

@@ -5,8 +5,9 @@
 #include <string>
 #include <vector>
 
-// Формат пакета: [4 байта: тип пакета (1=DATA, 2=ACK)][4 байта номер блока][4 байта размер данных (DATA only)][данные
-// (DATA only)] Отправитель шлет DATA пакеты, получатель шлет ACK с тем же номером блока. Если ACK не получен за timeout
+// Формат пакета: [4 байта: тип пакета (1=DATA, 2=ACK)][4 байта номер блока][4 байта размер данных
+// (DATA only)][данные (DATA only)] Отправитель шлет DATA пакеты, получатель шлет ACK с тем же
+// номером блока. Если ACK не получен за timeout
 // - отправитель повторяет отправку. file_chunk_size можно установить, например, 1024 байта.
 
 /**
@@ -19,7 +20,11 @@
  *
  * - `ACK` (2): Пакет подтверждения.
  */
-enum class FilePacketType : uint32_t { DATA = 1, ACK = 2 };
+enum class FilePacketType : uint32_t
+{
+    DATA = 1,
+    ACK = 2
+};
 /**
  * @struct FileDataPacket
  * @brief Структура для представления пакета данных.
@@ -30,7 +35,8 @@ enum class FilePacketType : uint32_t { DATA = 1, ACK = 2 };
  *
  * ///- std::vector<uint8_t> data - Данные блока в виде массива байтов
  */
-struct FileDataPacket {
+struct FileDataPacket
+{
     uint32_t block_number;
     std::vector<uint8_t> data;
 };
@@ -45,7 +51,8 @@ struct FileDataPacket {
  *
  *
  */
-struct FileAckPacket {
+struct FileAckPacket
+{
     uint32_t block_number;
 };
 
@@ -57,7 +64,7 @@ struct FileAckPacket {
  * @param pkt Пакет данных для сериализации.
  * @return std::vector<uint8_t> Сериализованный пакет в виде массива байтов.
  */
-std::vector<uint8_t> serialize_data_packet(const FileDataPacket &pkt);
+std::vector<uint8_t> serialize_data_packet(const FileDataPacket& pkt);
 /**
  * @brief Парсит массив байтов в структуру пакета данных (`DATA`).
  *
@@ -68,7 +75,7 @@ std::vector<uint8_t> serialize_data_packet(const FileDataPacket &pkt);
  * @return true Если парсинг прошел успешно.
  * @return false Если данные повреждены или не соответствуют формату.
  */
-bool parse_data_packet(const std::vector<uint8_t> &buf, FileDataPacket &pkt);
+bool parse_data_packet(const std::vector<uint8_t>& buf, FileDataPacket& pkt);
 /**
  * @brief Сериализует пакет подтверждения (`ACK`) в массив байтов.
  *
@@ -77,7 +84,7 @@ bool parse_data_packet(const std::vector<uint8_t> &buf, FileDataPacket &pkt);
  * @param pkt Пакет подтверждения для сериализации.
  * @return std::vector<uint8_t> Сериализованный пакет в виде массива байтов.
  */
-std::vector<uint8_t> serialize_ack_packet(const FileAckPacket &pkt);
+std::vector<uint8_t> serialize_ack_packet(const FileAckPacket& pkt);
 /**
  * @brief Парсит массив байтов в структуру пакета подтверждения (`ACK`).
  *
@@ -88,5 +95,5 @@ std::vector<uint8_t> serialize_ack_packet(const FileAckPacket &pkt);
  * @return true,если парсинг прошел успешно.
  * @return false, если данные повреждены или не соответствуют формату.
  */
-bool parse_ack_packet(const std::vector<uint8_t> &buf, FileAckPacket &pkt);
+bool parse_ack_packet(const std::vector<uint8_t>& buf, FileAckPacket& pkt);
 #endif

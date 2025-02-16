@@ -8,14 +8,17 @@
 #include <string>
 #include <vector>
 
-namespace Security {
-struct HashResult {
+namespace Security
+{
+struct HashResult
+{
     std::string hash;
     std::string salt;
 };
 
 HashResult generate_hash(const std::string& password);
-bool verify_password(const std::string& password, const std::string& stored_hash, const std::string& salt);
-}  // namespace Security
+bool verify_password(const std::string& password, const std::string& stored_hash,
+                     const std::string& salt);
+} // namespace Security
 
 #endif

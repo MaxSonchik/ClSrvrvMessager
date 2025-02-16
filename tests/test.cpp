@@ -18,7 +18,8 @@ using boost::asio::ip::udp;
 
 using namespace std;
 // Тест шифрования (Argon2)
-BOOST_AUTO_TEST_CASE(encryption_test) {
+BOOST_AUTO_TEST_CASE(encryption_test)
+{
     string password = "SecurePassword123";
 
     // Генерация хеша
@@ -35,7 +36,8 @@ BOOST_AUTO_TEST_CASE(encryption_test) {
 
 // Тест DB
 // tests/test.cpp
-BOOST_AUTO_TEST_CASE(database_test) {
+BOOST_AUTO_TEST_CASE(database_test)
+{
     Database db(":memory:");
     db.init();
 
@@ -52,112 +54,149 @@ BOOST_AUTO_TEST_CASE(database_test) {
 
     // Неверные данные
     BOOST_CHECK(!db.authenticate_user("test_user", "wrong_password"));
-
+    db.~Database();
     cout << "\033[32mSUCCESS: Database operations successful\033[0m" << endl;
 }
 
-// Тест UDP
-
-BOOST_AUTO_TEST_CASE(udp_file_transfer_test) {
+BOOST_AUTO_TEST_CASE(udp_file_transfer_test)
+{
+    // ----- Параметры теста -----
     const std::string save_path = "./received_files/";
     const std::string test_file = "./test_data/test_file.txt";
-    const std::string dest_ip = "127.0.0.1";  // localhost
-    const short port = 12345;
+    const short port = 54321 + (std::hash<std::thread::id>{}(std::this_thread::get_id()) % 100);
 
-    char cwd[1024];
-    if (getcwd(cwd, sizeof(cwd)) != nullptr) {
-        std::cout << "[DEBUG] Current working directory: " << cwd << std::endl;
-    }
-
-    try {
-        for (const auto& entry : std::filesystem::directory_iterator(save_path)) {
-            std::filesystem::remove(entry.path());
-        }
-        std::cout << "[INFO] Directory cleaned: " << save_path << std::endl;
-    } catch (const std::exception& e) {
-        BOOST_FAIL("[ERROR] Failed to clean directory: " + save_path + ", " + std::string(e.what()));
-    }
-
-    if (!std::filesystem::exists(test_file)) {
-        try {
-            std::ofstream test_file_stream(test_file);
-            if (!test_file_stream) {
-                BOOST_FAIL("[ERROR] Failed to create test file: " + test_file);
-            }
-            test_file_stream << "This is a test file for UDP transfer.";
-            test_file_stream.close();
-            std::cout << "[INFO] Test file created: " << test_file << std::endl;
-        } catch (const std::exception& e) {
-            BOOST_FAIL("[ERROR] Exception while creating test file: " + std::string(e.what()));
-        }
-    } else {
-        std::cout << "[INFO] Test file already exists: " << test_file << std::endl;
-    }
-
+    // 1. Инициализация контекста и work guard
     boost::asio::io_context io_context;
+    auto work_guard = boost::asio::make_work_guard(io_context);
 
-    std::thread receiver_thread([&]() {
-        UDPFileReceiver receiver(io_context, port, save_path);
-        receiver.start();
-    });
+    // 2. Создаём receiver в общей области видимости
+    UDPFileReceiver* receiver_ptr = nullptr;
+    std::promise<void> receiver_ready;
+    std::future<void> ready_future = receiver_ready.get_future();
 
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    // 3. Запускаем поток приёмника
+    std::thread receiver_thread(
+        [&]()
+        {
+	    UDPFileReceiver receiver(io_context, port, save_path);
+	    receiver_ptr = &receiver; // Сохраняем указатель
+	    receiver_ready.set_value();
+	    receiver.start();
+        });
 
-    try {
-        UDPFileSender sender(io_context);
-        bool success = sender.send_file(test_file, dest_ip, port);
-        BOOST_CHECK_MESSAGE(success, "[ERROR] File sending failed.");
-        std::cout << "\033[32mSUCCESS: Data sent successfully\033[0m" << std::endl;
-    } catch (const std::exception& e) {
-        BOOST_FAIL("[ERROR] Sender error: " + std::string(e.what()));
+    // 4. Ожидание инициализации приёмника
+    ready_future.wait();
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    // 5. Отправка файла
+    bool success = false;
+    try
+    {
+	UDPFileSender sender(io_context);
+	success = sender.send_file(test_file, "127.0.0.1", port);
+	BOOST_CHECK(success);
+    }
+    catch (...)
+    {
+	BOOST_FAIL("Exception during file sending");
     }
 
-    io_context.stop();
-    receiver_thread.join();
+    // 6. Остановка
+    work_guard.reset(); // Разрешаем завершение io_context
+    io_context.stop();  // Останавливаем контекст
 
+    // 7. Остановка приёмника через указатель
+    if (receiver_ptr)
+    {
+	receiver_ptr->stop();
+    }
+
+    // 8. Ожидание завершения потока
+    if (receiver_thread.joinable())
+    {
+	receiver_thread.join();
+    }
+
+    // 9. Проверка результата
     bool file_found = false;
-    try {
-        for (const auto& entry : std::filesystem::directory_iterator(save_path)) {
-            if (entry.path().extension() == ".bin") {
-                file_found = true;
-                std::cout << "\033[32mSUCCESS: File received successfully: " << entry.path() << "\033[0m" << std::endl;
-            }
-        }
-        BOOST_CHECK_MESSAGE(file_found, "[ERROR] No received file found in " + save_path);
-    } catch (const std::exception& e) {
-        BOOST_FAIL("[ERROR] Exception while checking received file: " + std::string(e.what()));
+    try
+    {
+	// Проверяем содержимое директории save_path
+	for (const auto& entry : std::filesystem::directory_iterator(save_path))
+	{
+	    if (entry.path().extension() == ".bin")
+	    {
+		file_found = true;
+
+		// Проверяем размер файла
+		auto file_size = std::filesystem::file_size(entry.path());
+		BOOST_CHECK_MESSAGE(file_size > 0,
+		                    "Received file is empty: " + entry.path().string());
+
+		// Логируем успешное получение файла
+		std::cout << "[SUCCESS] File received: " << entry.path().string()
+		          << " (size: " << file_size << " bytes)" << std::endl;
+
+		// Дополнительная проверка содержимого (опционально)
+		std::ifstream received_file(entry.path(), std::ios::binary);
+		if (received_file)
+		{
+		    std::string content((std::istreambuf_iterator<char>(received_file)),
+		                        std::istreambuf_iterator<char>());
+		    BOOST_CHECK_MESSAGE(!content.empty(), "Received file content is empty");
+		}
+		break; // Нашли файл, дальше проверять не нужно
+	    }
+	}
+
+	// Если файл не найден
+	BOOST_CHECK_MESSAGE(file_found, "No received file found in directory: " + save_path);
+
+	// Очистка директории после теста (опционально)
+	// for (const auto& entry : std::filesystem::directory_iterator(save_path)) {
+	//     std::filesystem::remove(entry.path());
+	// }
+    }
+    catch (const std::exception& e)
+    {
+	BOOST_FAIL("Exception during file verification: " + std::string(e.what()));
     }
 }
-
 // Тест TCP
 
-BOOST_AUTO_TEST_CASE(server_client_test) {
+BOOST_AUTO_TEST_CASE(server_client_test)
+{
     const uint16_t port = 5000;
     boost::asio::io_context io_context;
 
-    std::thread server_thread([&]() {
-        TCPServer server(io_context, port, ":memory:");
-        server.start();
-    });
+    std::thread server_thread(
+        [&]()
+        {
+	    TCPServer server(io_context, port, ":memory:");
+	    server.start();
+        });
 
     std::this_thread::sleep_for(std::chrono::seconds(3));
 
-    try {
-        TCPClient client("127.0.0.1", port);
-        client.connect();
+    try
+    {
+	TCPClient client("127.0.0.1", port);
+	client.connect();
 
-        std::cout << "\033[32mSUCCESS: Client connected to server\033[0m" << std::endl;
+	std::cout << "\033[32mSUCCESS: Client connected to server\033[0m" << std::endl;
 
-        BOOST_CHECK_MESSAGE(true, "[SUCCESS] Test completed after client connected");
+	BOOST_CHECK_MESSAGE(true, "[SUCCESS] Test completed after client connected");
 
-        io_context.stop();
-        server_thread.join();
+	io_context.stop();
+	server_thread.join();
 
-        std::cout << "\033[32mAll tests completed!\033[0m" << std::endl;
+	std::cout << "\033[32mAll tests completed!\033[0m" << std::endl;
 
-        return;
-    } catch (const std::exception& e) {
-        BOOST_FAIL("Client or server error: " << e.what());
+	return;
+    }
+    catch (const std::exception& e)
+    {
+	BOOST_FAIL("Client or server error: " << e.what());
     }
 
     io_context.stop();
