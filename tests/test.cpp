@@ -17,26 +17,42 @@
 using boost::asio::ip::udp;
 
 using namespace std;
-// Тест шифрования
+// Тест шифрования (Argon2)
 BOOST_AUTO_TEST_CASE(encryption_test) {
-    string input = "Hello, Dear user!";
-    string key = "HZ6S.D?e6S.D?6SS.D?e6S.?e6S.D?e6S.D?6SS.D?e6S.?e6SD?e6S.?e6S.D?e6S.D?6SS.S.?e6S.D?e6S.";
-    string encrypted = xor_encrypt(input, key);
-    BOOST_CHECK_EQUAL(xor_decrypt(encrypted, key), input);
+    string password = "SecurePassword123";
 
-    // Сообщение об успешной проверке
-    cout << "\033[32mSUCCESS: Encryption and decryption successful\033[0m" << endl;
+    // Генерация хеша
+    auto hash_result = Security::generate_hash(password);
+
+    // Проверка верификации
+    BOOST_CHECK(Security::verify_password(password, hash_result.hash, hash_result.salt));
+
+    // Проверка с неверным паролем
+    BOOST_CHECK(!Security::verify_password("WrongPassword", hash_result.hash, hash_result.salt));
+
+    cout << "\033[32mSUCCESS: Argon2 hashing/verification successful\033[0m" << endl;
 }
 
 // Тест DB
+// tests/test.cpp
 BOOST_AUTO_TEST_CASE(database_test) {
     Database db(":memory:");
     db.init();
-    BOOST_CHECK(db.add_user("test_user", "password", "127.0.0.1", 8080));
-    BOOST_CHECK(db.authenticate_and_update("test_user", "password", "127.0.0.1", 8081));
-    BOOST_CHECK(!db.authenticate_and_update("test_user", "wrong_password", "127.0.0.1", 8081));
 
-    // Сообщение об успешной проверке
+    // Создание пользователя
+    string password = "test_password";
+    auto hash_result = Security::generate_hash(password);
+    BOOST_CHECK(db.create_user("test_user", hash_result.hash, hash_result.salt));
+
+    // Аутентификация
+    BOOST_CHECK(db.authenticate_user("test_user", password));
+
+    // Обновление информации
+    BOOST_CHECK(db.update_connection_info("test_user", "127.0.0.1", 8080));
+
+    // Неверные данные
+    BOOST_CHECK(!db.authenticate_user("test_user", "wrong_password"));
+
     cout << "\033[32mSUCCESS: Database operations successful\033[0m" << endl;
 }
 
@@ -45,7 +61,7 @@ BOOST_AUTO_TEST_CASE(database_test) {
 BOOST_AUTO_TEST_CASE(udp_file_transfer_test) {
     const std::string save_path = "./received_files/";
     const std::string test_file = "./test_data/test_file.txt";
-    const std::string dest_ip = "127.0.0.1";//localhost
+    const std::string dest_ip = "127.0.0.1";  // localhost
     const short port = 12345;
 
     char cwd[1024];

@@ -5,7 +5,6 @@
 #include <fstream>
 #include <string>
 
-
 /**
  * @brief UDPFileReceiver
  * @brief Класс для приема файлов через протокол UDP.
@@ -54,10 +53,10 @@ class UDPFileReceiver {
     boost::asio::io_context &ioc_;              // Контекст ввода-вывода для Boost.Asio
     boost::asio::ip::udp::socket socket_;       // UDP-сокет для приема данных
     boost::asio::ip::udp::endpoint sender_ep_;  // Точка назначения для подтверждений
-    std::string save_path_;             // Путь для сохранения полученного файла
-    std::ofstream ofs_;                 // Поток для записи данных в файл
-    uint32_t expected_block_ = 0;       // Ожидаемый номер следующего блока данных
-    std::array<uint8_t, 2048> buffer_;  // Буфер для хранения получаемых данных
+    std::string save_path_;                     // Путь для сохранения полученного файла
+    std::ofstream ofs_;                         // Поток для записи данных в файл
+    uint32_t expected_block_ = 0;               // Ожидаемый номер следующего блока данных
+    std::array<uint8_t, 2048> buffer_;          // Буфер для хранения получаемых данных
 };
 
 #endif

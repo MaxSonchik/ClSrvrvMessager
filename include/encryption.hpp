@@ -1,33 +1,21 @@
 #ifndef ENCRYPTION_HPP
 #define ENCRYPTION_HPP
 
+#include <argon2.h>
+
+#include <algorithm>
+#include <random>
 #include <string>
-/**
- * @brief Шифрует строку с использованием XOR-алгоритма.
- *
- * Применяет побитовую операцию XOR к каждому символу входной строки, используя
- * предоставленный ключ. Длина ключа должна быть либо равна длине входной строки,
- * либо меньше (в таком случае ключ зацикливается).
- *
- * @param input Входная строка для шифрования. Тип: std::string.
- * @param key Ключ для шифрования. Тип: std::string.
- * @return std::string Зашифрованная строка.
- * @details Пример использования:
- */
-std::string xor_encrypt(const std::string &input, const std::string &key);
-/**
- * @brief Дешифрует строку, зашифрованную с использованием XOR-алгоритма.
- *
- * Применяет побитовую операцию XOR к каждому символу входной строки, используя
- * предоставленный ключ. Для успешной дешифровки необходимо использовать тот же ключ,
- * который был использован при шифровании.
- *
- * @param input Входная строка для дешифрования. Тип: std::string.
- * @param key Ключ для дешифрования. Тип: std::string.
- * @return std::string Расшифрованная строка.
- *
- *
- */
-std::string xor_decrypt(const std::string &input, const std::string &key);
+#include <vector>
+
+namespace Security {
+struct HashResult {
+    std::string hash;
+    std::string salt;
+};
+
+HashResult generate_hash(const std::string& password);
+bool verify_password(const std::string& password, const std::string& stored_hash, const std::string& salt);
+}  // namespace Security
 
 #endif

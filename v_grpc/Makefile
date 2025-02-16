@@ -1,6 +1,6 @@
 # Указать компилятор
 CXX = g++
-CXX_FLAGS = -std=c++17 -Wall -Wextra -O2
+CXX_FLAGS = -std=c++17 -Wall -Wextra -O2 
 
 # Папки проекта
 PROTO_DIR = proto
@@ -15,7 +15,7 @@ PROTO_GEN = $(BUILD_DIR)/messenger.pb.cc $(BUILD_DIR)/messenger.grpc.pb.cc
 # Библиотеки
 GRPC_CPP_PLUGIN = grpc_cpp_plugin
 GRPC_CPP_PLUGIN_PATH ?= `which $(GRPC_CPP_PLUGIN)`
-LIBS = -lgrpc++ -lprotobuf -lpthread
+LIBS = -lgrpc++ -lprotobuf -lpthread -largon2
 
 # Таргеты
 CLIENT_BIN = $(BUILD_DIR)/client
