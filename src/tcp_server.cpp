@@ -1,17 +1,17 @@
 #include "../include/tcp_server.hpp"
-
 #include <boost/asio.hpp>
 #include <iostream>
-
 #include "../include/message.hpp"
 
 using namespace boost::asio;
 using tcp = ip::tcp;
 
 TCPServer::TCPServer(boost::asio::io_context &ioc, uint16_t port, const std::string &db_path)
-    : ioc_(ioc), db_(db_path), acceptor_(ioc, tcp::endpoint(ip::make_address("0.0.0.0"), port)) {
-    db_.init();
-    log_info("Server created on IP 95.24.129.89 and port " + std::to_string(port));
+    : ioc_(ioc), db_(db_path), 
+      acceptor_(ioc, tcp::endpoint(ip::make_address("0.0.0.0"), port)) 
+{
+    // db_.init();  // Можно вызвать явно, но init() уже вызывается в конструкторе Database
+    log_info("Server created on IP 0.0.0.0 and port " + std::to_string(port));
 }
 
 void TCPServer::start() {
@@ -35,17 +35,32 @@ void TCPServer::do_accept() {
 }
 
 static void async_read_msg(std::shared_ptr<tcp::socket> socket, std::function<void(Message)> handler) {
-    auto length_buf = std::make_shared<std::vector<uint8_t>>(4);
-    async_read(*socket, buffer(*length_buf), [socket, length_buf, handler](boost::system::error_code ec, std::size_t) {
+    auto header_buf = std::make_shared<std::array<uint8_t, 4>>();
+    
+    async_read(*socket, buffer(*header_buf), [socket, header_buf, handler](boost::system::error_code ec, size_t) {
         if (ec) return;
-        uint32_t msg_length = (uint32_t)((*length_buf)[0] | ((*length_buf)[1] << 8) | ((*length_buf)[2] << 16) |
-                                         ((*length_buf)[3] << 24));
-
-        auto msg_buf = std::make_shared<std::vector<uint8_t>>(msg_length);
-        async_read(*socket, buffer(*msg_buf), [socket, msg_buf, handler](boost::system::error_code ec, std::size_t) {
+        
+        // Парсим длину
+        uint32_t length = static_cast<uint32_t>((*header_buf)[0])
+            | (static_cast<uint32_t>((*header_buf)[1]) << 8)
+            | (static_cast<uint32_t>((*header_buf)[2]) << 16)
+            | (static_cast<uint32_t>((*header_buf)[3]) << 24);
+        
+        if (length > 10*1024*1024) { // Защита от переполнения
+            log_error("Message too large: " + std::to_string(length));
+            return;
+        }
+        
+        auto body_buf = std::make_shared<std::vector<uint8_t>>(length);
+        async_read(*socket, buffer(*body_buf), [socket, body_buf, handler](boost::system::error_code ec, size_t) {
             if (ec) return;
-            Message msg = deserialize_message(*msg_buf);
-            handler(msg);
+            
+            try {
+                Message msg = deserialize_message(*body_buf);
+                handler(msg);
+            } catch (const std::exception& e) {
+                log_error("Deserialization error: " + std::string(e.what()));
+            }
         });
     });
 }
@@ -85,13 +100,15 @@ void TCPServer::handle_client(std::shared_ptr<tcp::socket> socket) {
 
             std::vector<uint8_t> out = serialize_message(reply);
             async_write(*socket, buffer(out), [this, socket](auto, auto) {});
-            // После ответа, продолжаем читать новые сообщения
+            // После ответа продолжаем читать
             handle_client(socket);
-        } else if (msg.type == MessageType::UserStatusRequest) {
+        } 
+        else if (msg.type == MessageType::UserStatusRequest) {
             Message status_reply;
             status_reply.type = MessageType::Text;
             status_reply.sender = "server";
             status_reply.receiver = msg.sender;
+
             // Проверяем онлайн ли msg.receiver
             if (sockets_.find(msg.receiver) != sockets_.end()) {
                 status_reply.text = "online";
@@ -101,8 +118,12 @@ void TCPServer::handle_client(std::shared_ptr<tcp::socket> socket) {
             std::vector<uint8_t> out = serialize_message(status_reply);
             async_write(*socket, buffer(out), [this, socket](auto, auto) {});
             handle_client(socket);
-        } else if (msg.type == MessageType::Text) {
-            // Пересылаем сообщение
+        } 
+        else if (msg.type == MessageType::Text) {
+            // Сохраняем сообщение в базе
+            db_.save_message(msg.sender, msg.receiver, msg.text);
+
+            // Пересылаем сообщение получателю (если он онлайн)
             auto it = sockets_.find(msg.receiver);
             if (it != sockets_.end()) {
                 std::vector<uint8_t> out = serialize_message(msg);

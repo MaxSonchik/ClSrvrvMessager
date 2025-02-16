@@ -2,8 +2,14 @@
 
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 
-Database::Database(const std::string& db_path) : db_(nullptr), db_path_(db_path), is_initialized_(false) { init(); }
+Database::Database(const std::string& db_path) 
+    : db_(nullptr), db_path_(db_path), is_initialized_(false) 
+{
+    // При создании объекта сразу инициализируем базу
+    init();
+}
 
 Database::~Database() {
     if (db_) {
@@ -12,19 +18,40 @@ Database::~Database() {
 }
 
 void Database::init() {
+    // Открываем (или создаём) файл базы данных
+    int rc = sqlite3_open(db_path_.c_str(), &db_);
+    if (rc != SQLITE_OK) {
+        throw std::runtime_error("Can't open database: " + std::string(sqlite3_errmsg(db_)));
+    }
+
+    is_initialized_ = true;
+
+    // Создаём таблицу пользователей
     const char* create_users_table =
         "CREATE TABLE IF NOT EXISTS users ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "username TEXT UNIQUE NOT NULL,"
         "password TEXT NOT NULL,"
-        "salt TEXT NOT NULL,"  // Добавлено поле salt
+        "salt TEXT NOT NULL," 
         "ip TEXT,"
         "port INTEGER);";
-
     execute_query(create_users_table);
+
+    // Создаём таблицу для истории сообщений
+    const char* create_messages_table =
+        "CREATE TABLE IF NOT EXISTS messages ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "sender TEXT NOT NULL,"
+        "receiver TEXT NOT NULL,"
+        "message TEXT NOT NULL,"
+        "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP"
+        ");";
+    execute_query(create_messages_table);
 }
 
-bool Database::is_initialized() const { return is_initialized_; }
+bool Database::is_initialized() const {
+    return is_initialized_;
+}
 
 bool Database::user_exists(const std::string& username) {
     check_db_connection();
@@ -99,16 +126,9 @@ bool Database::update_connection_info(const std::string& username, const std::st
     return success;
 }
 
-void Database::execute_query(const std::string& query) {
-    char* err_msg = nullptr;
-    if (sqlite3_exec(db_, query.c_str(), nullptr, nullptr, &err_msg) != SQLITE_OK) {
-        std::string error = "SQL error: " + std::string(err_msg);
-        sqlite3_free(err_msg);
-        throw std::runtime_error(error);
-    }
-}
-bool Database::authenticate_and_update(const std::string& username, const std::string& password, const std::string& ip,
-                                       uint16_t port) {
+bool Database::authenticate_and_update(const std::string& username, const std::string& password,
+                                       const std::string& ip, uint16_t port) 
+{
     check_db_connection();
 
     // Проверяем логин и пароль
@@ -120,6 +140,36 @@ bool Database::authenticate_and_update(const std::string& username, const std::s
     // Обновляем IP и порт
     return update_connection_info(username, ip, port);
 }
+
+// Новый метод для сохранения сообщения
+bool Database::save_message(const std::string& sender, const std::string& receiver, const std::string& text) {
+    check_db_connection();
+
+    sqlite3_stmt* stmt;
+    const char* query = "INSERT INTO messages (sender, receiver, message) VALUES (?, ?, ?);";
+
+    if (sqlite3_prepare_v2(db_, query, -1, &stmt, nullptr) != SQLITE_OK) {
+        throw std::runtime_error("Prepare failed (save_message): " + std::string(sqlite3_errmsg(db_)));
+    }
+
+    sqlite3_bind_text(stmt, 1, sender.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, receiver.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 3, text.c_str(), -1, SQLITE_STATIC);
+
+    bool success = (sqlite3_step(stmt) == SQLITE_DONE);
+    sqlite3_finalize(stmt);
+    return success;
+}
+
+void Database::execute_query(const std::string& query) {
+    char* err_msg = nullptr;
+    if (sqlite3_exec(db_, query.c_str(), nullptr, nullptr, &err_msg) != SQLITE_OK) {
+        std::string error = "SQL error: " + std::string(err_msg);
+        sqlite3_free(err_msg);
+        throw std::runtime_error(error);
+    }
+}
+
 void Database::check_db_connection() const {
     if (!db_ || !is_initialized_) {
         throw std::runtime_error("Database not initialized");

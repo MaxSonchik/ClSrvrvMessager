@@ -1,8 +1,10 @@
 #include "../include/message.hpp"
+#include <stdexcept>
 
-#include <cstring>
-
-static uint32_t read_uint32(const std::vector<uint8_t> &data, size_t &offset) {
+static uint32_t read_uint32(const std::vector<uint8_t>& data, size_t& offset) {
+    if (offset + 4 > data.size()) {
+        throw std::runtime_error("Not enough data for uint32");
+    }
     uint32_t val = 0;
     for (int i = 0; i < 4; i++) {
         val |= ((uint32_t)data[offset++] << (i * 8));
@@ -10,69 +12,75 @@ static uint32_t read_uint32(const std::vector<uint8_t> &data, size_t &offset) {
     return val;
 }
 
-static void write_uint32(std::vector<uint8_t> &data, uint32_t val) {
+static void write_uint32(std::vector<uint8_t>& data, uint32_t val) {
     for (int i = 0; i < 4; i++) {
         data.push_back((val >> (i * 8)) & 0xFF);
     }
 }
 
-static void write_string(std::vector<uint8_t> &data, const std::string &s) {
-    write_uint32(data, (uint32_t)s.size());
-    data.insert(data.end(), s.begin(), s.end());
-}
-
-static std::string read_string(const std::vector<uint8_t> &data, size_t &offset) {
+static std::string read_string(const std::vector<uint8_t>& data, size_t& offset) {
     uint32_t size = read_uint32(data, offset);
-    std::string s(size, '\0');
-    for (uint32_t i = 0; i < size; i++) {
-        s[i] = (char)data[offset++];
+    if (offset + size > data.size()) {
+        throw std::runtime_error("String exceeds data bounds");
     }
+    std::string s(data.begin() + offset, data.begin() + offset + size);
+    offset += size;
     return s;
 }
 
-std::vector<uint8_t> serialize_message(const Message &msg) {
-    // format:
-    // [type(1 byte)]
-    // sender(str), receiver(str), text(str), filename(str), password(str)
-    // file_size(8 bytes)
-    std::vector<uint8_t> d;
-    d.push_back((uint8_t)msg.type);
-    write_string(d, msg.sender);
-    write_string(d, msg.receiver);
-    write_string(d, msg.text);
-    write_string(d, msg.filename);
-    write_string(d, msg.password);
-
-    uint64_t fs = msg.file_size;
-    for (int i = 0; i < 8; i++) {
-        d.push_back((uint8_t)(fs & 0xFF));
-        fs >>= 8;
-    }
-
-    std::vector<uint8_t> result;
-    write_uint32(result, (uint32_t)d.size());
-    result.insert(result.end(), d.begin(), d.end());
-    return result;
+static void write_string(std::vector<uint8_t>& data, const std::string& s) {
+    write_uint32(data, static_cast<uint32_t>(s.size()));
+    data.insert(data.end(), s.begin(), s.end());
 }
 
-Message deserialize_message(const std::vector<uint8_t> &data) {
+std::vector<uint8_t> serialize_message(const Message& msg) {
+    std::vector<uint8_t> data;
+    
+    // Тип сообщения
+    data.push_back(static_cast<uint8_t>(msg.type));
+    
+    // Строковые поля
+    write_string(data, msg.sender);
+    write_string(data, msg.receiver);
+    write_string(data, msg.text);
+    write_string(data, msg.filename);
+    write_string(data, msg.password);
+    
+    // File size (little-endian)
+    uint64_t fs = msg.file_size;
+    for (int i = 0; i < 8; i++) {
+        data.push_back(static_cast<uint8_t>(fs & 0xFF));
+        fs >>= 8;
+    }
+    
+    return data;
+}
+
+Message deserialize_message(const std::vector<uint8_t>& data) {
     Message msg;
     size_t offset = 0;
-
-    uint8_t t = data[offset++];
-    msg.type = (MessageType)t;
-
-    msg.sender = read_string(data, offset);
-    msg.receiver = read_string(data, offset);
-    msg.text = read_string(data, offset);
-    msg.filename = read_string(data, offset);
-    msg.password = read_string(data, offset);
-
-    uint64_t fs = 0;
-    for (int i = 0; i < 8; i++) {
-        fs |= ((uint64_t)data[offset++] << (i * 8));
+    
+    try {
+        // Тип сообщения
+        if (offset >= data.size()) throw std::runtime_error("No type byte");
+        msg.type = static_cast<MessageType>(data[offset++]);
+        
+        // Строковые поля
+        msg.sender = read_string(data, offset);
+        msg.receiver = read_string(data, offset);
+        msg.text = read_string(data, offset);
+        msg.filename = read_string(data, offset);
+        msg.password = read_string(data, offset);
+        
+        // File size
+        if (offset + 8 > data.size()) throw std::runtime_error("No file size");
+        msg.file_size = 0;
+        for (int i = 0; i < 8; i++) {
+            msg.file_size |= static_cast<uint64_t>(data[offset++]) << (i * 8);
+        }
+    } catch (const std::exception& e) {
+        throw std::runtime_error("Deserialization failed: " + std::string(e.what()));
     }
-    msg.file_size = fs;
-
+    
     return msg;
 }

@@ -22,6 +22,8 @@ class Database {
                                  uint16_t port);
     bool update_connection_info(const std::string& username, const std::string& ip, uint16_t port);
 
+    bool save_message(const std::string& sender, const std::string& receiver, const std::string&text);
+
    private:
     sqlite3* db_;
     std::string db_path_;
