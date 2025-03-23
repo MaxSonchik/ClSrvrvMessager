@@ -1,84 +1,38 @@
 #include "../include/udp_file_receiver.hpp"
-
 #include <boost/asio.hpp>
-#include <chrono>
 #include <fstream>
-#include <thread>
 
-#include "../include/common.hpp"
-#include "../include/file_transfer_protocol.hpp"
+using namespace boost::asio;
+using namespace boost::asio::ip;
 
-UDPFileReceiver::UDPFileReceiver(boost::asio::io_context& ioc, uint16_t port,
-                                 const std::string& save_path)
-    : ioc_(ioc), socket_(ioc, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), port)),
-      save_path_(save_path), expected_block_(0)
+UDPFileReceiver::UDPFileReceiver(io_context& io_context,
+                               short port,
+                               const std::string& save_dir)
+    : socket_(io_context, udp::v4()),
+      remote_endpoint_(),
+      receive_buffer_{},
+      port_(port),
+      save_dir_(save_dir),
+      is_running_(true) // Инициализируем флаг
 {
+    socket_.bind(udp::endpoint(udp::v4(), port_));
 }
 
-void UDPFileReceiver::start()
-{
-    do_receive();
-    ioc_.run();
-}
-void UDPFileReceiver::do_receive()
-{
+void UDPFileReceiver::start() {
     socket_.async_receive_from(
-        boost::asio::buffer(buffer_.data(), buffer_.size()), sender_ep_, 0,
-        [this](const boost::system::error_code& ec, std::size_t bytes_received)
-        {
-	    if (!ec && bytes_received > 0)
-	    {
-	        std::vector<uint8_t> v(buffer_.begin(), buffer_.begin() + bytes_received);
-	        FileDataPacket dpkt;
-
-	        if (parse_data_packet(v, dpkt))
-	        {
-		    if (dpkt.block_number == 0 && !ofs_.is_open())
-		    {
-		        // Генерируем имя файла
-		        std::string filename =
-		            "received_file_" + std::to_string(std::time(nullptr)) + ".bin";
-		        std::string file_path = save_path_ + "/" + filename;
-
-		        ofs_.open(file_path, std::ios::binary);
-		        if (!ofs_)
-		        {
-			    log_error("Cannot open file for writing: " + file_path);
-			    return;
-		        }
-		        log_info("Started receiving file: " + file_path);
-		    }
-
-		    if (dpkt.block_number == expected_block_)
-		    {
-		        // Исправленная строка с записью данных
-		        ofs_.write(reinterpret_cast<const char*>(dpkt.data.data()),
-		                   dpkt.data.size());
-		        send_ack(dpkt.block_number, sender_ep_);
-		        expected_block_++;
-		    }
-		    else
-		    {
-		        send_ack(expected_block_ - 1, sender_ep_);
-		    }
-	        }
-	    }
-	    do_receive();
+        buffer(receive_buffer_), 
+        remote_endpoint_,
+        [this](boost::system::error_code ec, std::size_t bytes_recvd) {
+            if (!ec && bytes_recvd > 0 && this->is_running_) { // Используем this->
+                std::ofstream file(save_dir_ + "/test_file.txt", 
+                                 std::ios::binary | std::ios::app);
+                file.write(receive_buffer_.data(), bytes_recvd);
+                start();
+            }
         });
 }
 
-void UDPFileReceiver::send_ack(uint32_t block_number,
-                               const boost::asio::ip::udp::endpoint& sender_ep)
-{
-    FileAckPacket ack;
-    ack.block_number = block_number;
-    auto data = serialize_ack_packet(ack);
-    boost::system::error_code ec;
-    socket_.send_to(boost::asio::buffer(data), sender_ep, 0, ec);
-    if (ec)
-    {
-	log_error("Failed to send ACK: " + ec.message());
-    }
+void UDPFileReceiver::stop() {
+    is_running_ = false;
+    socket_.close();
 }
-
-void UDPFileReceiver::stop() { socket_.close(); }

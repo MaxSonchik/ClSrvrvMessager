@@ -21,6 +21,10 @@ void TCPServer::start()
     ioc_.run();
 }
 
+void TCPServer::stop(){
+	acceptor_.close();
+}
+
 void TCPServer::do_accept()
 {
     auto socket = std::make_shared<tcp::socket>(ioc_);

@@ -31,7 +31,7 @@ class TCPServer
      * от клиентов.
      */
     void start();
-
+    void stop();
   private:
     /**
      * @brief Принимает входящие подключения от клиентов.

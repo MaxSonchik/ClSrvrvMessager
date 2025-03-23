@@ -1,41 +1,33 @@
 #include "../include/database.hpp"
-
-#include <iostream>
-#include <sstream>
+#include <memory>
+#include <sqlite3.h>
 #include <stdexcept>
-/*
-free(): invalid pointer
 
-Thread 1 "test" received signal SIGABRT, Aborted.
-__pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6,
-    no_tid=no_tid@entry=0) at pthread_kill.c:44
-44	      return INTERNAL_SYSCALL_ERROR_P (ret) ? INTERNAL_SYSCALL_ERRNO (ret) : 0;
-(gdb) bt
-#0  __pthread_kill_implementation (threadid=<optimized out>,
-    signo=signo@entry=6, no_tid=no_tid@entry=0) at pthread_kill.c:44
-#1  0x00007ffff77ad6d3 in __pthread_kill_internal (threadid=<optimized out>,
-    signo=6) at pthread_kill.c:89
-#2  0x00007ffff7753ba0 in __GI_raise (sig=sig@entry=6)
-    at ../sysdeps/posix/raise.c:26
-#3  0x00007ffff773b582 in __GI_abort () at abort.c:73
-#4  0x00007ffff773c3bf in __libc_message_impl (
-    fmt=fmt@entry=0x7ffff78c931f "%s\n") at ../sysdeps/posix/libc_fatal.c:134
-#5  0x00007ffff77b7765 in malloc_printerr (
-    str=str@entry=0x7ffff78c7100 "free(): invalid pointer") at malloc.c:5829
-#6  0x00007ffff77bca24 in _int_free_check (av=<optimized out>,
-    p=0x5555557abf60, size=<optimized out>) at malloc.c:4560
-#7  _int_free (av=<optimized out>, p=0x5555557abf60, have_lock=0)
-    at malloc.c:4692
-#8  __GI___libc_free (mem=0x5555557abf70) at malloc.c:3476
-#9  0x00007ffff7755e00 in __cxa_finalize (d=0x7ffff7e0f000)
-    at cxa_finalize.c:97
-#10 0x00007ffff7d9f088 in ?? ()
-   from /usr/lib/libboost_unit_test_framework.so.1.87.0
-#11 0x00007fffffffe4a0 in ?? ()
-#12 0x00007ffff7fc7fd2 in _dl_call_fini (closure_map=0x7ffff7f91fc0)
-    at dl-call_fini.c:43
+class StatementHandler
+{
+    sqlite3_stmt* stmt_;
 
-*/
+  public:
+    explicit StatementHandler(sqlite3* db, const char* query) : stmt_(nullptr)
+    {
+	if (sqlite3_prepare_v2(db, query, -1, &stmt_, nullptr) != SQLITE_OK)
+	{
+	    throw std::runtime_error(sqlite3_errmsg(db));
+	}
+    }
+
+    ~StatementHandler()
+    {
+	if (stmt_)
+	    sqlite3_finalize(stmt_);
+    }
+
+    operator sqlite3_stmt*() const { return stmt_; }
+
+    StatementHandler(const StatementHandler&) = delete;
+    StatementHandler& operator=(const StatementHandler&) = delete;
+};
+
 Database::Database(const std::string& db_path)
     : db_(nullptr), db_path_(db_path), is_initialized_(false)
 {
@@ -53,45 +45,34 @@ Database::~Database()
 
 void Database::init()
 {
-    // Открываем (или создаём) файл базы данных
+    if (is_initialized_)
+	return;
+
     int rc = sqlite3_open(db_path_.c_str(), &db_);
     if (rc != SQLITE_OK)
     {
-	std::string error_msg;
+	std::string error = db_ ? sqlite3_errmsg(db_) : "Unknown error";
 	if (db_)
-	{
-	    error_msg = sqlite3_errmsg(db_);
 	    sqlite3_close_v2(db_);
-	    db_ = nullptr;
-	}
-	else
-	{
-	    error_msg = "Unknown error (database handle is null)";
-	}
-	throw std::runtime_error("Can't open database: " + error_msg);
+	throw std::runtime_error("Can't open database: " + error);
     }
 
     is_initialized_ = true;
 
-    // Создаём таблицу пользователей
-    const char* create_users_table = "CREATE TABLE IF NOT EXISTS users ("
-                                     "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                                     "username TEXT UNIQUE NOT NULL,"
-                                     "password TEXT NOT NULL,"
-                                     "salt TEXT NOT NULL,"
-                                     "ip TEXT,"
-                                     "port INTEGER);";
-    execute_query(create_users_table);
+    execute_query("CREATE TABLE IF NOT EXISTS users ("
+                  "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                  "username TEXT UNIQUE NOT NULL,"
+                  "password TEXT NOT NULL,"
+                  "salt TEXT NOT NULL,"
+                  "ip TEXT,"
+                  "port INTEGER);");
 
-    // Создаём таблицу для истории сообщений
-    const char* create_messages_table = "CREATE TABLE IF NOT EXISTS messages ("
-                                        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-                                        "sender TEXT NOT NULL,"
-                                        "receiver TEXT NOT NULL,"
-                                        "message TEXT NOT NULL,"
-                                        "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP"
-                                        ");";
-    execute_query(create_messages_table);
+    execute_query("CREATE TABLE IF NOT EXISTS messages ("
+                  "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                  "sender TEXT NOT NULL,"
+                  "receiver TEXT NOT NULL,"
+                  "message TEXT NOT NULL,"
+                  "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP);");
 }
 
 bool Database::is_initialized() const { return is_initialized_; }
@@ -99,105 +80,110 @@ bool Database::is_initialized() const { return is_initialized_; }
 bool Database::user_exists(const std::string& username)
 {
     check_db_connection();
-
-    sqlite3_stmt* stmt = nullptr;
-    const char* query = "SELECT 1 FROM users WHERE username = ?;";
-
-    if (sqlite3_prepare_v2(db_, query, -1, &stmt, nullptr) != SQLITE_OK)
+    try
     {
-	std::string error = sqlite3_errmsg(db_);
-	sqlite3_finalize(stmt);
-	throw std::runtime_error("Prepare failed: " + error);
+	StatementHandler stmt(db_, "SELECT 1 FROM users WHERE username = ?;");
+	sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_TRANSIENT);
+	return sqlite3_step(stmt) == SQLITE_ROW;
     }
-
-    sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_STATIC);
-    bool exists = (sqlite3_step(stmt) == SQLITE_ROW);
-
-    sqlite3_finalize(stmt);
-    return exists;
+    catch (const std::exception& e)
+    {
+	throw std::runtime_error("user_exists: " + std::string(e.what()));
+    }
 }
 
-bool Database::create_user(const std::string& username, const std::string& password_hash,
-                           const std::string& salt)
+bool Database::create_user(const std::string& username, 
+                          const std::string& password_hash,
+                          const std::string& salt) 
 {
-    check_db_connection();
-
-    sqlite3_stmt* stmt = nullptr;
-    const char* query = "INSERT INTO users (username, password, salt) VALUES (?, ?, ?);";
-
-    if (sqlite3_prepare_v2(db_, query, -1, &stmt, nullptr) != SQLITE_OK)
-    {
-	std::string error = sqlite3_errmsg(db_);
-	sqlite3_finalize(stmt);
-	throw std::runtime_error("Prepare failed: " + error);
+    // Проверяем, что соль и хэш не пустые
+    if (password_hash.empty() || salt.empty()) {
+        throw std::runtime_error("Invalid hash or salt");
     }
+    if (password_hash.empty() || salt.empty())
+    {
+	throw std::runtime_error("Invalid hash or salt");
+    }
+    check_db_connection();
+    try
+    {
+	StatementHandler stmt(db_,
+	                      "INSERT INTO users (username, password, salt) VALUES (?, ?, ?);");
 
-    sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, password_hash.c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 3, salt.c_str(), -1, SQLITE_STATIC);
+	sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 2, password_hash.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 3, salt.c_str(), -1, SQLITE_TRANSIENT);
 
-    bool success = (sqlite3_step(stmt) == SQLITE_DONE);
-    sqlite3_finalize(stmt);
-    return success;
+	return sqlite3_step(stmt) == SQLITE_DONE;
+    }
+    catch (const std::exception& e)
+    {
+	throw std::runtime_error("create_user: " + std::string(e.what()));
+    }
 }
 
 bool Database::authenticate_user(const std::string& username, const std::string& password)
 {
     check_db_connection();
-
-    sqlite3_stmt* stmt = nullptr;
-    const char* query = "SELECT 1 FROM users WHERE username = ? AND password = ?;";
-
-    if (sqlite3_prepare_v2(db_, query, -1, &stmt, nullptr) != SQLITE_OK)
+    try
     {
-	std::string error = sqlite3_errmsg(db_);
-	sqlite3_finalize(stmt);
-	throw std::runtime_error("Prepare failed: " + error);
+	StatementHandler stmt(db_, "SELECT password, salt FROM users WHERE username = ?;");
+
+	// Привязываем имя пользователя к запросу
+	sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_TRANSIENT);
+
+	if (sqlite3_step(stmt) == SQLITE_ROW)
+	{
+	    // Получаем хэш и соль из базы данных
+	    const unsigned char* hash_ptr = sqlite3_column_text(stmt, 0);
+	    const unsigned char* salt_ptr = sqlite3_column_text(stmt, 1);
+
+	    std::string stored_hash(reinterpret_cast<const char*>(hash_ptr));
+	    std::string stored_salt(reinterpret_cast<const char*>(salt_ptr));
+
+	    // Генерируем хэш с использованием сохранённой соли
+	    auto computed_hash = Security::generate_hash(password, stored_salt);
+
+	    // Логирование для отладки (опционально)
+	    std::cout << "[DEBUG] Stored hash: " << stored_hash << "\n";
+	    std::cout << "[DEBUG] Computed hash: " << computed_hash.hash << "\n";
+
+	    return stored_hash == computed_hash.hash;
+	}
+	return false; // Пользователь не найден
     }
-
-    sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, password.c_str(), -1, SQLITE_STATIC);
-
-    bool auth = (sqlite3_step(stmt) == SQLITE_ROW);
-    sqlite3_finalize(stmt);
-    return auth;
+    catch (const std::exception& e)
+    {
+	throw std::runtime_error("authenticate_user: " + std::string(e.what()));
+    }
 }
 
 bool Database::update_connection_info(const std::string& username, const std::string& ip,
-                                      uint16_t port)
+                                      std::uint16_t port)
 {
     check_db_connection();
-
-    sqlite3_stmt* stmt = nullptr;
-    const char* query = "UPDATE users SET ip = ?, port = ? WHERE username = ?;";
-
-    if (sqlite3_prepare_v2(db_, query, -1, &stmt, nullptr) != SQLITE_OK)
+    try
     {
-	std::string error = sqlite3_errmsg(db_);
-	sqlite3_finalize(stmt);
-	throw std::runtime_error("Prepare failed: " + error);
+	StatementHandler stmt(db_, "UPDATE users SET ip = ?, port = ? WHERE username = ?;");
+
+	sqlite3_bind_text(stmt, 1, ip.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int(stmt, 2, port);
+	sqlite3_bind_text(stmt, 3, username.c_str(), -1, SQLITE_TRANSIENT);
+
+	return sqlite3_step(stmt) == SQLITE_DONE;
     }
-
-    sqlite3_bind_text(stmt, 1, ip.c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_int(stmt, 2, port);
-    sqlite3_bind_text(stmt, 3, username.c_str(), -1, SQLITE_STATIC);
-
-    bool success = (sqlite3_step(stmt) == SQLITE_DONE);
-    sqlite3_finalize(stmt);
-    return success;
+    catch (const std::exception& e)
+    {
+	throw std::runtime_error("update_connection_info: " + std::string(e.what()));
+    }
 }
 
 bool Database::authenticate_and_update(const std::string& username, const std::string& password,
-                                       const std::string& ip, uint16_t port)
+                                       const std::string& ip, std::uint16_t port)
 {
     check_db_connection();
-
-    bool auth = authenticate_user(username, password);
-    if (!auth)
-    {
+    if (!authenticate_user(username, password))
 	return false;
-    }
-
     return update_connection_info(username, ip, port);
 }
 
@@ -205,42 +191,31 @@ bool Database::save_message(const std::string& sender, const std::string& receiv
                             const std::string& text)
 {
     check_db_connection();
-
-    sqlite3_stmt* stmt = nullptr;
-    const char* query = "INSERT INTO messages (sender, receiver, message) VALUES (?, ?, ?);";
-
-    if (sqlite3_prepare_v2(db_, query, -1, &stmt, nullptr) != SQLITE_OK)
+    try
     {
-	std::string error = sqlite3_errmsg(db_);
-	sqlite3_finalize(stmt);
-	throw std::runtime_error("Prepare failed (save_message): " + error);
+	StatementHandler stmt(db_,
+	                      "INSERT INTO messages (sender, receiver, message) VALUES (?, ?, ?);");
+
+	sqlite3_bind_text(stmt, 1, sender.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 2, receiver.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt, 3, text.c_str(), -1, SQLITE_TRANSIENT);
+
+	return sqlite3_step(stmt) == SQLITE_DONE;
     }
-
-    sqlite3_bind_text(stmt, 1, sender.c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, receiver.c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 3, text.c_str(), -1, SQLITE_STATIC);
-
-    bool success = (sqlite3_step(stmt) == SQLITE_DONE);
-    sqlite3_finalize(stmt);
-    return success;
+    catch (const std::exception& e)
+    {
+	throw std::runtime_error("save_message: " + std::string(e.what()));
+    }
 }
 
-void Database::execute_query(const std::string& query)
-{
+void Database::execute_query(const std::string& query) {
     char* err_msg = nullptr;
     int rc = sqlite3_exec(db_, query.c_str(), nullptr, nullptr, &err_msg);
-
-    if (rc != SQLITE_OK)
-    {
-	std::string error = "SQL error: " + std::string(err_msg);
-	sqlite3_free(err_msg);
-	throw std::runtime_error(error);
-    }
-
-    // При успехе err_msg должен быть nullptr, но на всякий случай проверяем
-    if (err_msg)
-    {
-	sqlite3_free(err_msg);
+    
+    if (rc != SQLITE_OK) {
+        std::string error = err_msg ? "SQL error: " + std::string(err_msg) : "Unknown error";
+        sqlite3_free(err_msg); // Освобождаем только здесь
+        throw std::runtime_error(error);
     }
 }
 
@@ -248,6 +223,6 @@ void Database::check_db_connection() const
 {
     if (!db_ || !is_initialized_)
     {
-	throw std::runtime_error("Database not initialized");
+	throw std::runtime_error("Database connection not initialized");
     }
 }
