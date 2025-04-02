@@ -1,0 +1,15 @@
+# service-monitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: messenger-monitor
+  labels:
+    release: prometheus  # Должно совпадать с serviceMonitorSelector Prometheus
+spec:
+  selector:
+    matchLabels:
+      app: messenger  # Метка Service
+  endpoints:
+  - port: metrics  # Название порта из Service
+    path: /metrics
+    interval: 10s

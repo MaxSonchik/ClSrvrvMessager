@@ -1,0 +1,22 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ml-scaler-role
+  namespace: default
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments/scale"]
+  verbs: ["get", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ml-scaler-binding
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: ml-scaler-sa
+roleRef:
+  kind: Role
+  name: ml-scaler-role
+  apiGroup: rbac.authorization.k8s.io
