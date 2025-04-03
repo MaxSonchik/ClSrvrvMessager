@@ -13,4 +13,7 @@ RUN pip install --upgrade pip && \
 COPY . /app
 WORKDIR /app
 
+RUN test_data.py
+RUN train_model.py
+
 CMD ["python", "ml_scaler.py"]
