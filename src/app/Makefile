@@ -1,55 +1,47 @@
+# Компилятор и флаги
 CXX = g++
-CXXFLAGS = -std=c++17 -pthread -I./src -I/usr/local/include/prometheus
-LDFLAGS = -lboost_system -lprometheus-cpp-pull -lprometheus-cpp-core
-# Source files
-COMMON_SRCS = src/common/json_util.cpp
-TCP_SRCS = src/tcp/tcp_server.cpp src/tcp/tcp_client.cpp
-#GRPC_SRCS = src/grpc/grpc_server.cpp src/grpc/grpc_client.cpp
-MAIN_SRCS = src/main_tcp_server.cpp src/main_tcp_client.cpp #src/main_benchmark.cpp src/main_grpc_server.cpp src/main_grpc_client.cpp 
+CXXFLAGS = -std=c++17 -pthread -Wall -Wextra -g # Добавлены флаги предупреждений и отладки
+INCLUDES = -I./src -I/usr/local/include # Объединяем пути включения
+LDFLAGS = -L/usr/local/lib # Путь к библиотекам prometheus-cpp
+LIBS_SERVER = -lboost_system -lboost_thread -lprometheus-cpp-pull -lprometheus-cpp-core -lsqlite3 # Добавлена -lsqlite3 и boost::thread
+LIBS_CLIENT = -lboost_system -lboost_thread # Клиенту не нужны prometheus или sqlite
 
-# # Proto files
-# PROTO_FILE = src/grpc/chat.proto
-# PROTO_SRC_GRPC = src/grpc/chat.grpc.pb.cc
-# PROTO_SRC_CPP = src/grpc/chat.pb.cc
-# PROTO_HDR_GRPC = src/grpc/chat.grpc.pb.h
-# PROTO_HDR_CPP = src/grpc/chat.pb.h
+# Исходные файлы
+SERVER_SOURCES = src/main_tcp_server.cpp src/tcp/tcp_server.cpp src/database/database_manager.cpp src/common/json_util.cpp
+CLIENT_SOURCES = src/main_tcp_client.cpp src/tcp/tcp_client.cpp src/common/json_util.cpp
 
-# Targets
-TARGETS = messenger_tcp_server messenger_tcp_client #messenger_benchmark messenger_grpc_server messenger_grpc_client
+# Объектные файлы (генерируются автоматически из .cpp)
+SERVER_OBJS = $(SERVER_SOURCES:.cpp=.o)
+CLIENT_OBJS = $(CLIENT_SOURCES:.cpp=.o)
 
-all: $(TARGETS)
+# Исполняемые файлы
+SERVER_TARGET = messenger_tcp_server
+CLIENT_TARGET = messenger_tcp_client
 
-# # Generate protobuf and gRPC code
-# $(PROTO_SRC_GRPC): $(PROTO_FILE)
-# 	protoc -I src/grpc --cpp_out=src/grpc --grpc_out=src/grpc --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` $<
+# Цель по умолчанию: собрать все
+all: $(SERVER_TARGET) $(CLIENT_TARGET)
 
-# Object files
-OBJS_COMMON = $(COMMON_SRCS:.cpp=.o)
-OBJS_TCP = $(TCP_SRCS:.cpp=.o)
-OBJS_GRPC = $(GRPC_SRCS:.cpp=.o)
-OBJS_PROTO = $(PROTO_SRC_GRPC:.cc=.o) $(PROTO_SRC_CPP:.cc=.o)
+# Правило для сборки сервера
+$(SERVER_TARGET): $(SERVER_OBJS)
+	$(CXX) $(CXXFLAGS) $(SERVER_OBJS) -o $(SERVER_TARGET) $(LDFLAGS) $(LIBS_SERVER)
 
+# Правило для сборки клиента
+$(CLIENT_TARGET): $(CLIENT_OBJS)
+	$(CXX) $(CXXFLAGS) $(CLIENT_OBJS) -o $(CLIENT_TARGET) $(LDFLAGS) $(LIBS_CLIENT)
+
+# Общее правило для компиляции .cpp в .o
+# $(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
+# $< - имя исходного файла (первая зависимость)
+# $@ - имя цели (файла .o)
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
-# Build executables
-messenger_tcp_server: $(OBJS_COMMON) $(OBJS_TCP) src/main_tcp_server.o
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
-
-messenger_tcp_client: $(OBJS_COMMON) $(OBJS_TCP) src/main_tcp_client.o
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDFLAGS)
-
-#messenger_grpc_server: $(OBJS_COMMON) $(OBJS_PROTO) $(OBJS_GRPC) src/main_grpc_server.o
-#	$(CXX) $(CXXFLAGS) $^ -o $@ `pkg-config --libs grpc++ protobuf` $(LDFLAGS)
-
-#messenger_grpc_client: $(OBJS_COMMON) $(OBJS_PROTO) $(OBJS_GRPC) src/main_grpc_client.o
-#	$(CXX) $(CXXFLAGS) $^ -o $@ `pkg-config --libs grpc++ protobuf` $(LDFLAGS)
-
-# messenger_benchmark: $(OBJS_COMMON) $(OBJS_TCP) $(OBJS_PROTO) $(OBJS_GRPC) src/main_benchmark.o
-# 	$(CXX) $(CXXFLAGS) $^ -o $@ `pkg-config --libs grpc++ protobuf` $(LDFLAGS)
-
+# Очистка
 clean:
-	rm -f $(TARGETS) src/**/*.o src/*.o 
+	rm -f $(SERVER_TARGET) $(CLIENT_TARGET) $(SERVER_OBJS) $(CLIENT_OBJS)
+
 
 clangfix:
 	clang-format -i /src/tcp/*.cpp /src/tcp/*.hpp /src/grpc/*.cpp /src/grpc/*.hpp
+
+.PHONY: all clean

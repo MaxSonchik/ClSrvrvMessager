@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: messenger-app
+  namespace: messenger-app # Укажите неймспейс
+  labels:
+    app: messenger
+spec:
+  replicas: 1 # Вы масштабировали до 0, потом до 1, так что это значение будет актуальным
+  selector:
+    matchLabels:
+      app: messenger
+  template:
+    metadata:
+      labels:
+        app: messenger
+    spec:
+      containers:
+        - name: messenger
+          image: messenger-app:latest
+          imagePullPolicy: Never
+          ports:
+            - name: tcp
+              containerPort: 8080
+            - name: http-metrics
+              containerPort: 9090
+          env:
+            - name: DB_PATH
+              value: "/data/messenger.db"
+          # --- > ВОТ ЭТА СЕКЦИЯ НУЖНА ВНУТРИ containers: <---
+          volumeMounts:
+            - name: messenger-db-storage # Имя должно совпадать с именем в spec.volumes
+              mountPath: /data         # Куда монтировать внутри контейнера
+          # --- > КОНЕЦ СЕКЦИИ volumeMounts <---
+      # --- > ВОТ ЭТА СЕКЦИЯ НУЖНА НА УРОВНЕ spec: <---
+      volumes:
+        - name: messenger-db-storage # Имя тома (произвольное, но должно совпадать с volumeMounts.name)
+          persistentVolumeClaim:
+            claimName: messenger-db-pvc # Имя вашего PVC
+      # --- > КОНЕЦ СЕКЦИИ volumes <---

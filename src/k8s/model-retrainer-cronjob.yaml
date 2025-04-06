@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: model-retrainer
+  namespace: messenger-app # Укажите неймспейс
+  labels:
+    app: model-retrainer
+spec:
+  schedule: "0 */6 * * *" # Пример: Запускать каждые 6 часов (00:00, 06:00, 12:00, 18:00 UTC)
+  # schedule: "0 2 * * *" # Запускать каждый день в 2 ночи UTC
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: model-retrainer
+        spec:
+          serviceAccountName: ml-scaler-sa # Используем тот же SA (у него есть нужные права на чтение Pods)
+          containers:
+          - name: model-retrainer
+            # Замените 'your-docker-registry/ml-app:latest' на имя вашего образа
+            image: ml-app:latest # Тот же образ, что и для scaler'а
+            imagePullPolicy: Never
+            command: ["python", "retrain_model.py"] # Переопределяем команду для запуска обучения
+            env:
+              - name: MODEL_DIR
+                value: "/models" # Путь к моделям
+              - name: PROMETHEUS_URL
+                value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090"
+              - name: APP_NAME
+                value: "messenger-app"
+              - name: APP_NAMESPACE
+                value: "messenger-app"
+              - name: TRAINING_DAYS
+                value: "0.001" # Обучение на данных за 7 дней
+              - name: PROMETHEUS_STEP
+                value: "1m" # Шаг данных
+            volumeMounts:
+              - name: model-storage # Имя тома
+                mountPath: /models # Путь монтирования
+                readOnly: false # Retrainer пишет модели
+          volumes:
+            - name: model-storage # Имя тома
+              persistentVolumeClaim:
+                claimName: model-storage-pvc # Имя PVC для моделей
+          restartPolicy: OnFailure # Перезапускать Job при ошибке (можно Never)

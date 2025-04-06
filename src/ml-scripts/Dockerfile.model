@@ -1,0 +1,26 @@
+# Используем официальный образ Python 3.9 slim версии
+FROM python:3.9-slim
+
+# Установка системных зависимостей для prophet/cmdstanpy
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Копируем файл зависимостей
+COPY requirements.txt .
+
+# Обновляем pip и устанавливаем зависимости
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Копируем все Python скрипты
+COPY *.py ./
+
+# Каталог для моделей (будет смонтирован из PVC)
+# RUN mkdir /models # Можно создать здесь или положиться на volume mount
+
+# CMD по умолчанию для компонента масштабирования.
+CMD ["python", "ml_scaler.py"]

@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Messenger TCP Load Test">
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+        <collectionProp name="Arguments.arguments"/>
+      </elementProp>
+    </TestPlan>
+    <hashTree>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Messenger Users">
+        <!-- Количество виртуальных пользователей (потоков) -->
+        <intProp name="ThreadGroup.num_threads">50</intProp>
+        <!-- Время (в секундах), за которое все пользователи будут запущены -->
+        <intProp name="ThreadGroup.ramp_time">30</intProp>
+        <!-- Контроллер цикла: true = использовать настройки длительности/старта/конца -->
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <!-- Длительность теста в секундах (например, 5 минут) -->
+        <longProp name="ThreadGroup.duration">300</longProp>
+        <!-- Задержка старта (если нужна) -->
+        <longProp name="ThreadGroup.delay">0</longProp>
+        <!-- Действие при ошибке семплера: continue, startnextloop, stopthread, stoptest, stoptestnow -->
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <!-- Контроллер цикла для старого интерфейса (не используется при scheduler=true) -->
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <intProp name="LoopController.loops">-1</intProp> <!-- -1 = бесконечный цикл, управляется длительностью -->
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+        <!-- Sampler 1: Отправка события 'connect' -->
+        <TCPSampler guiclass="TCPSamplerGui" testclass="TCPSampler" testname="TCP Connect">
+          <!-- Имя хоста или IP адрес сервера (используем имя сервиса Kubernetes) -->
+          <stringProp name="TCPSampler.server">messenger-service.messenger-app.svc.cluster.local</stringProp>
+          <!-- Порт сервера -->
+          <stringProp name="TCPSampler.port">8080</stringProp>
+          <!-- Класс TCP клиента (оставляем по умолчанию) -->
+          <stringProp name="TCPSampler.classname">TCPClientImpl</stringProp>
+          <!-- Таймаут подключения (ms) -->
+          <stringProp name="TCPSampler.ctimeout">5000</stringProp>
+          <!-- Таймаут ответа (ms) -->
+          <stringProp name="TCPSampler.timeout">10000</stringProp>
+          <!-- Текст для отправки (JSON для подключения) -->
+          <!-- Используем функцию ${__threadNum} для уникального имени пользователя на поток -->
+          <stringProp name="TCPSampler.request">{ "event": "connect", "from": "user-${__threadNum}" }</stringProp>
+          <!-- НЕ устанавливать флаг 'Re-use connection' для первого семплера в последовательности -->
+          <boolProp name="TCPSampler.reUseConnection">false</boolProp>
+          <!-- НЕ закрывать соединение после этого запроса, оно нужно для следующего -->
+          <boolProp name="TCPSampler.closeConnection">false</boolProp>
+          <!-- НЕ читать ответ сервера (если он не нужен для логики теста) -->
+          <boolProp name="TCPSampler.nodelay">false</boolProp>
+          <!-- Байт конца строки (EOL) - ASCII код 10 для '\n' -->
+          <stringProp name="TCPSampler.EOL">10</stringProp>
+          <!-- Кодировка -->
+          <stringProp name="ConfigTestElement.input_encoding">UTF-8</stringProp>
+        </TCPSampler>
+        <hashTree/>
+
+        <!-- Таймер: Пауза между 'connect' и 'message' -->
+        <ConstantTimer guiclass="ConstantTimerGui" testclass="ConstantTimer" testname="Pause after Connect">
+          <!-- Задержка в миллисекундах -->
+          <stringProp name="ConstantTimer.delay">500</stringProp>
+        </ConstantTimer>
+        <hashTree/>
+
+        <!-- Sampler 2: Отправка события 'message' -->
+        <TCPSampler guiclass="TCPSamplerGui" testclass="TCPSampler" testname="TCP Send Message">
+          <!-- Имя хоста/IP и порт можно не указывать, если используется Re-use connection -->
+           <stringProp name="TCPSampler.server"></stringProp>
+           <stringProp name="TCPSampler.port"></stringProp>
+          <stringProp name="TCPSampler.classname">TCPClientImpl</stringProp>
+          <stringProp name="TCPSampler.ctimeout">5000</stringProp>
+          <stringProp name="TCPSampler.timeout">10000</stringProp>
+          <!-- Текст для отправки (JSON для сообщения) -->
+          <!-- ${__threadNum} для отправителя/получателя, ${__counter(TRUE)} для уникальности текста -->
+          <stringProp name="TCPSampler.request">{ "event": "message", "from": "user-${__threadNum}", "to": "user-${__threadNum}", "text": "Hello JMeter message ${__counter(TRUE)}" }</stringProp>
+          <!-- УСТАНОВИТЬ 'Re-use connection', чтобы использовать соединение от предыдущего семплера -->
+          <boolProp name="TCPSampler.reUseConnection">true</boolProp>
+          <!-- Закрыть соединение ПОСЛЕ отправки этого сообщения (завершение итерации пользователя) -->
+          <!-- Если нужно отправить больше сообщений в цикле, установите в false и добавьте Loop Controller -->
+          <boolProp name="TCPSampler.closeConnection">true</boolProp>
+          <boolProp name="TCPSampler.nodelay">false</boolProp>
+          <stringProp name="TCPSampler.EOL">10</stringProp>
+          <stringProp name="ConfigTestElement.input_encoding">UTF-8</stringProp>
+        </TCPSampler>
+        <hashTree/>
+
+        <!-- Сохранение результатов в JTL файл для анализа после теста -->
+        <!-- ВАЖНО: Укажите путь, который будет доступен в контейнере JMeter Job -->
+        <ResultCollector guiclass="SimpleDataWriter" testclass="ResultCollector" testname="Save Results to JTL">
+          <!-- Путь к файлу внутри контейнера -->
+          <stringProp name="filename">/results/results.jtl</stringProp>
+          <!-- Не сохранять конфигурацию в файл -->
+          <boolProp name="ResultCollector.error_logging">false</boolProp>
+          <objProp>
+            <name>saveConfig</name>
+            <value class="SampleSaveConfiguration">
+              <!-- Выбираем, что сохранять. Для CSV лучше оставить минимум нужного -->
+              <time>true</time>
+              <latency>true</latency>
+              <timestamp>true</timestamp>
+              <success>true</success>
+              <label>true</label>
+              <code>true</code>
+              <message>true</message>
+              <threadName>true</threadName>
+              <dataType>false</dataType> <!-- Не нужно для TCP -->
+              <encoding>false</encoding>
+              <assertions>true</assertions>
+              <subresults>false</subresults> <!-- Обычно не нужны -->
+              <responseData>false</responseData> <!-- Экономит место -->
+              <samplerData>false</samplerData> <!-- Экономит место -->
+              <xml>false</xml> <!-- ВАЖНО: Сохранять как CSV -->
+              <fieldNames>true</fieldNames> <!-- Сохранять заголовки столбцов -->
+              <responseHeaders>false</responseHeaders>
+              <requestHeaders>false</requestHeaders>
+              <responseDataOnError>false</responseDataOnError>
+              <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+              <assertionsResultsToSave>0</assertionsResultsToSave>
+              <bytes>true</bytes>
+              <sentBytes>true</sentBytes>
+              <url>false</url> <!-- Не актуально для TCP -->
+              <threadCounts>true</threadCounts>
+              <idleTime>true</idleTime>
+              <connectTime>true</connectTime>
+            </value>
+          </objProp>
+        </ResultCollector>
+        <hashTree/>
+
+      </hashTree> <!-- Конец Thread Group -->
+    </hashTree> <!-- Конец Test Plan -->
+  </hashTree>
+</jmeterTestPlan>

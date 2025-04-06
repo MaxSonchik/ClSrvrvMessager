@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: messenger-monitor
+  namespace: messenger-app # Укажите неймспейс
+  labels:
+    release: prometheus # Эта метка должна совпадать с serviceMonitorSelector в вашей установке Prometheus Operator
+spec:
+  selector:
+    matchLabels:
+      app: messenger # Выбирает Service с меткой app=messenger
+  namespaceSelector: # Явно указываем, что Service находится в этом неймспейсе
+    matchNames:
+      - messenger-app
+  endpoints:
+  - port: metrics # Имя порта 'metrics' из Service
+    path: /metrics # Путь, по которому сервер отдает метрики
+    interval: 15s # Как часто Prometheus будет скрейпить метрики

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: messenger-service
+  namespace: messenger-app # Укажите неймспейс
+  labels:
+    app: messenger # Метка для ServiceMonitor
+spec:
+  selector:
+    app: messenger # Выбирает поды с меткой app=messenger
+  ports:
+    - name: tcp # Имя порта для ясности
+      port: 8080 # Порт, который виден другим подам в кластере
+      targetPort: tcp # Имя порта в Deployment (или номер 8080)
+    - name: metrics # Имя порта для метрик
+      port: 9090 # Порт для Prometheus
+      targetPort: http-metrics # Имя порта в Deployment (или номер 9090)
+  type: ClusterIP # Доступен только внутри кластера

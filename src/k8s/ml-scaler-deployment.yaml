@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-scaler
+  namespace: messenger-app # Укажите неймспейс
+  labels:
+    app: ml-scaler
+spec:
+  replicas: 1 
+  selector:
+    matchLabels:
+      app: ml-scaler
+  template:
+    metadata:
+      labels:
+        app: ml-scaler
+    spec:
+      serviceAccountName: ml-scaler-sa # Используем созданный ServiceAccount
+      containers:
+        - name: ml-scaler
+          # Замените 'your-docker-registry/ml-app:latest' на имя вашего образа
+          image: ml-app:latest # Используем локальный образ Minikube
+          imagePullPolicy: Never
+          env:
+            - name: MODEL_DIR
+              value: "/models" # Путь к моделям внутри контейнера
+            - name: PROMETHEUS_URL
+              # URL сервиса Prometheus. Зависит от имени установки Helm-чарта.
+              # Обычно 'http://<release-name>-kube-prometheus-prometheus.<namespace>.svc:<port>'
+              # Проверьте имя сервиса командой: kubectl get svc -n monitoring
+              value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090"
+            - name: APP_NAME
+              value: "messenger-app" # Имя целевого Deployment
+            - name: APP_NAMESPACE
+              value: "messenger-app" # Неймспейс целевого Deployment
+            - name: MIN_REPLICAS
+              value: "1"
+            - name: MAX_REPLICAS
+              value: "25" # Ваш максимум
+            - name: SLEEP_INTERVAL
+              value: "300" # 5 минут
+          volumeMounts:
+            - name: model-storage # Имя тома
+              mountPath: /models # Путь монтирования внутри контейнера
+              readOnly: true # Scaler только читает модели
+      volumes:
+        - name: model-storage # Имя тома
+          persistentVolumeClaim:
+            claimName: model-storage-pvc # Имя PVC для моделей

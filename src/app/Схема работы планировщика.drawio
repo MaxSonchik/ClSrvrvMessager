@@ -1,0 +1,78 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/132.0.0.0 YaBrowser/25.2.0.0 Safari/537.36" version="26.2.8">
+  <diagram name="Страница — 1" id="yEXPzEYNmaENkS8HXfLS">
+    <mxGraphModel dx="1494" dy="2020" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="SE2i6ZO4_G8ishWyD58Q-1" target="SE2i6ZO4_G8ishWyD58Q-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-1" value="Пользователь" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="360" y="-970" width="110" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-2" value="DATABASE&lt;br&gt;OF&lt;br&gt;PLANS" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="880" y="-360" width="140" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="SE2i6ZO4_G8ishWyD58Q-5" target="SE2i6ZO4_G8ishWyD58Q-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="SE2i6ZO4_G8ishWyD58Q-5" target="SE2i6ZO4_G8ishWyD58Q-1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="830" y="-628" />
+              <mxPoint x="830" y="-915" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-5" value="Сервер" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="-640" width="330" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-7" value="(Имя пользователя), Название события, описание события, дата начала, дата окончания, флаги(на выбор)" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="414" y="-840" width="266" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;" edge="1" parent="1" source="SE2i6ZO4_G8ishWyD58Q-8" target="SE2i6ZO4_G8ishWyD58Q-9">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="SE2i6ZO4_G8ishWyD58Q-8" target="SE2i6ZO4_G8ishWyD58Q-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-8" value="PLANMAKER" style="whiteSpace=wrap;html=1;aspect=fixed;" vertex="1" parent="1">
+          <mxGeometry x="374" y="-480" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fillColor=#f8cecc;strokeColor=#b85450;" edge="1" parent="1" source="SE2i6ZO4_G8ishWyD58Q-9" target="SE2i6ZO4_G8ishWyD58Q-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-9" value="CronJob" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" vertex="1" parent="1">
+          <mxGeometry x="30" y="-320" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-12" value="Создание события в процессах" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="130" y="-400" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-15" value="Загрузка события" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="490" y="-400" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-16" value="Отсчёт времени" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="190" y="-295" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-18" value="Сигнал о начале события(уведомление)" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="240" y="-250" width="264" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-19" value="" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;rounded=0;entryX=0.698;entryY=0.953;entryDx=0;entryDy=0;entryPerimeter=0;endWidth=18;endSize=4.87;width=8;" edge="1" parent="1" source="SE2i6ZO4_G8ishWyD58Q-2" target="SE2i6ZO4_G8ishWyD58Q-5">
+          <mxGeometry width="100" height="100" relative="1" as="geometry">
+            <mxPoint x="360" y="-430" as="sourcePoint" />
+            <mxPoint x="460" y="-530" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-22" value="Какие события есть у пользователя?" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="650" y="-510" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-26" value="Какие события у тебя есть." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="600" y="-660" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="SE2i6ZO4_G8ishWyD58Q-27" value="&lt;ul&gt;&lt;li&gt;Вопрос к Матвею: есть ли возможность превратить запрос в БД в функцию, которую планировщик задач может импортировать к себе(создано для работы с БД)&lt;/li&gt;&lt;li&gt;&lt;br&gt;&lt;/li&gt;&lt;li&gt;&lt;br&gt;&lt;/li&gt;&lt;/ul&gt;" style="text;strokeColor=none;fillColor=none;html=1;whiteSpace=wrap;verticalAlign=middle;overflow=hidden;" vertex="1" parent="1">
+          <mxGeometry x="880" y="-970" width="400" height="220" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
