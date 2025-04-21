@@ -1,66 +1,49 @@
 #include "common/json_util.h"
-#include <sstream>
-#include <iomanip>
 
 namespace common {
 
-std::string escape_json(const std::string& s) {
-    std::ostringstream oss;
-    oss << std::hex;
-    for (char c : s) {
-        switch (c) {
-            case '\"': oss << "\\\""; break;
-            case '\\': oss << "\\\\"; break;
-            case '\b': oss << "\\b"; break;
-            case '\f': oss << "\\f"; break;
-            case '\n': oss << "\\n"; break;
-            case '\r': oss << "\\r"; break;
-            case '\t': oss << "\\t"; break;
-            default:
-                if (static_cast<unsigned char>(c) < 0x20) {
-                    oss << "\\u" << std::setw(4) << std::setfill('0') << (int)c;
-                } else {
-                    oss << c;
-                }
-        }
-    }
-    return oss.str();
+using json = nlohmann::json;
+
+json base_event(const std::string& event) {
+    json j;
+    j["event"] = event;
+    return j;
 }
 
-std::string make_json_event(const std::string& event,
-                             const std::string& from,
-                             const std::string& to,
-                             const std::string& text,
-                             const std::string& file_name,
-                             size_t file_size,
-                             int chunk_id,
-                             int total_chunks) {
-    std::ostringstream oss;
-    oss << "{";
-    oss << "\"event\":\"" << event << "\"";
-    if (!from.empty()) {
-        oss << ", \"from\":\"" << escape_json(from) << "\"";
-    }
-    if (!to.empty()) {
-        oss << ", \"to\":\"" << escape_json(to) << "\"";
-    }
-    if (!text.empty()) {
-        oss << ", \"text\":\"" << escape_json(text) << "\"";
-    }
-    if (!file_name.empty()) {
-        oss << ", \"file_name\":\"" << escape_json(file_name) << "\"";
-    }
-    if (file_size != 0) {
-        oss << ", \"file_size\":" << file_size;
-    }
-    if (chunk_id >= 0) {
-        oss << ", \"chunk_id\":" << chunk_id;
-    }
-    if (total_chunks >= 0) {
-        oss << ", \"total_chunks\":" << total_chunks;
-    }
-    oss << "}";
-    return oss.str();
+json error_event(const std::string& message, const std::string& original_sender) {
+    json j = base_event("error");
+    j["from"] = original_sender; // От кого исходное сообщение, вызвавшее ошибку
+    j["text"] = message;
+    return j;
 }
+
+json status_event(const std::string& status, const std::string& recipient) {
+    json j = base_event("status");
+    j["from"] = "server";
+    if (!recipient.empty()) {
+        j["to"] = recipient;
+    }
+    j["text"] = status;
+    return j;
+}
+
+json message_event(const std::string& from, const std::string& to, const std::string& text) {
+    json j = base_event("message");
+    j["from"] = from;
+    j["to"] = to;
+    j["text"] = text;
+    return j;
+}
+
+json task_notification_event(const std::string& username, int task_id, const std::string& task_name, const std::string& description) {
+    json j = base_event("task_notification");
+    j["to"] = username; // Уведомление конкретному пользователю
+    j["task_id"] = task_id;
+    j["task_name"] = task_name;
+    j["description"] = description;
+    return j;
+}
+
+// Функция escape_json удалена
 
 } // namespace common

@@ -1,92 +1,68 @@
-# --- Stage 1: Build ---
-    FROM ubuntu:22.04 AS builder
+FROM ubuntu:22.04 AS builder
 
-    ENV DEBIAN_FRONTEND=noninteractive
-    
-    # Обновляем списки пакетов и устанавливаем ТОЛЬКО НЕОБХОДИМЫЕ зависимости сборки
-    RUN apt-get update && \
-        apt-get install -y --no-install-recommends \
-        # Основные инструменты сборки и Git
-        build-essential \
-        cmake \
-        git \
-        ca-certificates \
-        wget \
-        # Зависимости Boost (только нужные)
-        libboost-system-dev \
-        libboost-thread-dev \
-        # libboost-program-options-dev \ # Раскомментируйте, если нужно
-        # Зависимости Protobuf & gRPC
-        libprotobuf-dev \
-        protobuf-compiler \
-        libgrpc++-dev \
-        # Зависимости prometheus-cpp
-        libcurl4-openssl-dev \
-        zlib1g-dev \
-        libmicrohttpd-dev \
-        # Зависимости вашего приложения
-        nlohmann-json3-dev \
-        libsqlite3-dev \
-        # Завершаем список пакетов и очищаем кеш
-        && apt-get clean && rm -rf /var/lib/apt/lists/*
-    
-    # Клонируем и собираем prometheus-cpp
-    WORKDIR /opt
-    RUN git clone --depth 1 --recursive https://github.com/jupp0r/prometheus-cpp.git prometheus-cpp
-    WORKDIR /opt/prometheus-cpp
-    RUN mkdir build && cd build && \
-        cmake .. \
-          -DBUILD_SHARED_LIBS=ON \
-          -DENABLE_PUSH=OFF \
-          -DENABLE_COMPRESSION=OFF \
-          -DENABLE_TESTING=OFF \
-          -DCMAKE_INSTALL_PREFIX=/usr/local && \
-        make -j$(nproc) && \
-        make install && \
-        cd ../.. && rm -rf /opt/prometheus-cpp
-    
-    # Копируем исходный код приложения
-    WORKDIR /app
-    COPY . .
-    
-    # Собираем приложение
-    RUN make clean && make
-    
-    # --- Stage 2: Runtime ---
-    FROM ubuntu:22.04
-    
-    ENV DEBIAN_FRONTEND=noninteractive
-    
-    # Устанавливаем ТОЛЬКО НЕОБХОДИМЫЕ runtime библиотеки
-    RUN apt-get update && apt-get install -y --no-install-recommends \
-        # Зависимости Boost (версии для Ubuntu 22.04)
-        libboost-system1.74.0 \
-        libboost-thread1.74.0 \
-        # Зависимости Protobuf & gRPC
-        libprotobuf23 \
-        libgrpc++1 \
-        # Зависимости prometheus-cpp
-        libcurl4 \
-        libmicrohttpd12 \
-        zlib1g \
-        # Зависимости вашего приложения
-        libsqlite3-0 \
-        # ca-certificates \ # Нужны, если приложение само делает HTTPS запросы
-        # Завершаем список пакетов и очищаем кеш
-        && apt-get clean && rm -rf /var/lib/apt/lists/*
-    
-    # Копируем собранные библиотеки prometheus-cpp из стадии builder
-    COPY --from=builder /usr/local/lib/libprometheus-cpp* /usr/local/lib/
-    
-    # Копируем скомпилированное приложение из стадии builder
-    COPY --from=builder /app/messenger_tcp_server /app/messenger_tcp_server
-    
-    # Обновляем кеш динамического линковщика
-    RUN ldconfig
-    
-    WORKDIR /app
-    
-    EXPOSE 8080
-    EXPOSE 9090
-    
-    CMD ["/app/messenger_tcp_server"]
+# Установка зависимостей сборки
+# Обновляем список пакетов и устанавливаем необходимые инструменты
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    libboost-dev \
+    libboost-system-dev \
+    libboost-thread-dev \
+    libboost-coroutine-dev \
+    libsqlite3-dev \
+    libargon2-dev \
+    libprometheus-cpp-dev \
+    # libprotobuf-dev protobuf-compiler (Если prometheus-cpp требует)
+    && rm -rf /var/lib/apt/lists/*
+
+# Копируем исходный код проекта
+WORKDIR /app
+COPY . .
+
+# Создаем директорию для сборки и собираем проект
+# (Предполагается, что у вас есть CMakeLists.txt или вы адаптируете Makefile)
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+RUN cmake --build build --config Release -j $(nproc)
+
+# Этап 2: Запуск
+FROM ubuntu:22.04
+
+# Установка зависимостей времени выполнения
+# Нужны только те библиотеки, с которыми слинковано приложение
+RUN apt-get update && apt-get install -y \
+    libboost-system1.74.0 \
+    libboost-thread1.74.0 \
+    # libboost-coroutine1.74.0 (если используется) \
+    libsqlite3-0 \
+    libargon2-1 \
+    # libprometheus-cpp-core / libprometheus-cpp-pull (или какие там runtime либы) \
+    # libprotobuf (если нужно) \
+    && rm -rf /var/lib/apt/lists/*
+
+# Создаем пользователя и группу для запуска приложения (лучше не от root)
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Создаем директорию для данных и устанавливаем права
+RUN mkdir /data && chown appuser:appuser /data
+VOLUME /data # Делаем /data томом для хранения БД
+
+WORKDIR /app
+
+# Копируем собранный исполняемый файл сервера из этапа сборки
+COPY --from=builder /app/build/tcp_server .
+# Возможно, нужно скопировать и другие файлы, если они нужны серверу
+
+# Устанавливаем владельца исполняемого файла
+RUN chown appuser:appuser tcp_server
+
+# Переключаемся на непривилегированного пользователя
+USER appuser
+
+# Порты, которые открывает сервер, 8080 app 9090 metrics
+EXPOSE 8080 
+EXPOSE 9090 
+
+# Команда для запуска сервера
+# Убедитесь, что БД будет создана в /data/messenger.db (это путь по умолчанию в коде)
+CMD ["./tcp_server"]

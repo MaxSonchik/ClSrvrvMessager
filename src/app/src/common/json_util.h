@@ -2,20 +2,24 @@
 #define COMMON_JSON_UTIL_H
 
 #include <string>
+#include <nlohmann/json.hpp> // Используем nlohmann/json
 
 namespace common {
-    // Escapes special characters in a string for JSON output
-    std::string escape_json(const std::string& s);
+    //базовое событие
+    nlohmann::json base_event(const std::string& event);
 
-    // Constructs a JSON-formatted event string with given fields (unused fields can be left default)
-    std::string make_json_event(const std::string& event,
-                                 const std::string& from = "",
-                                 const std::string& to = "",
-                                 const std::string& text = "",
-                                 const std::string& file_name = "",
-                                 size_t file_size = 0,
-                                 int chunk_id = -1,
-                                 int total_chunks = -1);
-}
+    //ошибка
+    nlohmann::json error_event(const std::string& message, const std::string& original_sender = "server");
 
-#endif
+    //статус
+    nlohmann::json status_event(const std::string& status, const std::string& recipient = "");
+
+    //сообщение
+    nlohmann::json message_event(const std::string& from, const std::string& to, const std::string& text);
+
+    //Уведомление
+    nlohmann::json task_notification_event(const std::string& username, int task_id, const std::string& task_name, const std::string& description);
+
+} // namespace common
+
+#endif // COMMON_JSON_UTIL_H

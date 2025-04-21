@@ -6,10 +6,10 @@ metadata:
 data:
   # Имя файла, как он будет виден в контейнере
   messenger_test.jmx: |
-    <?xml version="1.0" encoding="UTF-8"?>
+        <?xml version="1.0" encoding="UTF-8"?>
     <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
       <hashTree>
-        <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Messenger TCP Load Test">
+        <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Messenger TCP Load Test - Revised">
           <boolProp name="TestPlan.functional_mode">false</boolProp>
           <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
           <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
@@ -19,22 +19,19 @@ data:
         </TestPlan>
         <hashTree>
           <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Messenger Users">
-            <!-- КОНФИГУРАЦИЯ НАГРУЗКИ -->
-            <intProp name="ThreadGroup.num_threads">50</intProp> <!-- Количество одновременных пользователей -->
-            <intProp name="ThreadGroup.ramp_time">30</intProp> <!-- Время (сек) на запуск всех пользователей -->
-            <boolProp name="ThreadGroup.scheduler">true</boolProp> <!-- Использовать настройки длительности -->
-            <longProp name="ThreadGroup.duration">300</longProp> <!-- Длительность теста (сек) = 5 минут -->
+            <intProp name="ThreadGroup.num_threads">10</intProp> <!-- Уменьшим для отладки -->
+            <intProp name="ThreadGroup.ramp_time">5</intProp> <!-- Уменьшим для отладки -->
+            <boolProp name="ThreadGroup.scheduler">true</boolProp>
+            <longProp name="ThreadGroup.duration">60</longProp> <!-- Уменьшим длительность для отладки -->
             <longProp name="ThreadGroup.delay">0</longProp>
-            <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+            <stringProp name="ThreadGroup.on_sample_error">startnextloop</stringProp> <!-- Попробовать следующую итерацию при ошибке -->
             <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
               <intProp name="LoopController.loops">-1</intProp>
               <boolProp name="LoopController.continue_forever">false</boolProp>
             </elementProp>
           </ThreadGroup>
           <hashTree>
-            <!-- СЦЕНАРИЙ ПОЛЬЗОВАТЕЛЯ -->
-
-            <!-- Шаг 1: Подключение -->
+            <!-- Sampler 1: Отправка события 'connect' -->
             <TCPSampler guiclass="TCPSamplerGui" testclass="TCPSampler" testname="TCP Connect">
               <stringProp name="TCPSampler.server">messenger-service.messenger-app.svc.cluster.local</stringProp>
               <stringProp name="TCPSampler.port">8080</stringProp>
@@ -42,39 +39,38 @@ data:
               <stringProp name="TCPSampler.ctimeout">5000</stringProp>
               <stringProp name="TCPSampler.timeout">10000</stringProp>
               <stringProp name="TCPSampler.request">{ "event": "connect", "from": "user-${__threadNum}" }</stringProp>
-              <boolProp name="TCPSampler.reUseConnection">false</boolProp>
-              <boolProp name="TCPSampler.closeConnection">false</boolProp> <!-- НЕ закрываем, нужно для след. шага -->
+              <boolProp name="TCPSampler.reUseConnection">false</boolProp> <!-- НЕ переиспользовать -->
+              <boolProp name="TCPSampler.closeConnection">false</boolProp> <!-- НЕ закрывать -->
               <boolProp name="TCPSampler.nodelay">false</boolProp>
-              <stringProp name="TCPSampler.EOL">10</stringProp> <!-- Байт конца строки (\n) -->
+              <stringProp name="TCPSampler.EOL">10</stringProp> <!-- Новая строка -->
               <stringProp name="ConfigTestElement.input_encoding">UTF-8</stringProp>
             </TCPSampler>
             <hashTree/>
 
-            <!-- Шаг 2: Пауза -->
+            <!-- Таймер: Пауза -->
             <ConstantTimer guiclass="ConstantTimerGui" testclass="ConstantTimer" testname="Pause after Connect">
-              <stringProp name="ConstantTimer.delay">500</stringProp> <!-- 500 ms -->
+              <stringProp name="ConstantTimer.delay">200</stringProp> <!-- Небольшая пауза -->
             </ConstantTimer>
             <hashTree/>
 
-            <!-- Шаг 3: Отправка сообщения -->
+            <!-- Sampler 2: Отправка события 'message' -->
             <TCPSampler guiclass="TCPSamplerGui" testclass="TCPSampler" testname="TCP Send Message">
-               <stringProp name="TCPSampler.server"></stringProp> <!-- Пусто, т.к. reUseConnection=true -->
-               <stringProp name="TCPSampler.port"></stringProp>   <!-- Пусто, т.к. reUseConnection=true -->
+               <stringProp name="TCPSampler.server"></stringProp>
+               <stringProp name="TCPSampler.port"></stringProp>
               <stringProp name="TCPSampler.classname">TCPClientImpl</stringProp>
               <stringProp name="TCPSampler.ctimeout">5000</stringProp>
               <stringProp name="TCPSampler.timeout">10000</stringProp>
-              <stringProp name="TCPSampler.request">{ "event": "message", "from": "user-${__threadNum}", "to": "user-${__threadNum}", "text": "Hello JMeter message ${__counter(TRUE)}" }</stringProp>
-              <boolProp name="TCPSampler.reUseConnection">true</boolProp> <!-- Используем открытое соединение -->
-              <boolProp name="TCPSampler.closeConnection">true</boolProp> <!-- Закрываем после этого сообщения -->
+              <stringProp name="TCPSampler.request">{ "event": "message", "from": "user-${__threadNum}", "to": "user-${__threadNum}", "text": "Hello test ${__counter(TRUE)}" }</stringProp>
+              <boolProp name="TCPSampler.reUseConnection">true</boolProp> <!-- ПЕРЕИСПОЛЬЗОВАТЬ соединение -->
+              <boolProp name="TCPSampler.closeConnection">true</boolProp> <!-- ЗАКРЫТЬ после этого -->
               <boolProp name="TCPSampler.nodelay">false</boolProp>
               <stringProp name="TCPSampler.EOL">10</stringProp>
               <stringProp name="ConfigTestElement.input_encoding">UTF-8</stringProp>
             </TCPSampler>
             <hashTree/>
 
-            <!-- СОХРАНЕНИЕ РЕЗУЛЬТАТОВ -->
+            <!-- Сохранение результатов -->
             <ResultCollector guiclass="SimpleDataWriter" testclass="ResultCollector" testname="Save Results to JTL">
-              <!-- Путь внутри контейнера, куда будут сохраняться результаты -->
               <stringProp name="filename">/results/results.jtl</stringProp>
               <boolProp name="ResultCollector.error_logging">false</boolProp>
               <objProp>
@@ -93,12 +89,12 @@ data:
                   <assertions>true</assertions>
                   <subresults>false</subresults>
                   <responseData>false</responseData>
-                  <samplerData>false</samplerData>
-                  <xml>false</xml> <!-- ВАЖНО: Сохранять как CSV -->
+                  <samplerData>true</samplerData> <!-- Включим данные семплера для отладки -->
+                  <xml>false</xml>
                   <fieldNames>true</fieldNames>
                   <responseHeaders>false</responseHeaders>
                   <requestHeaders>false</requestHeaders>
-                  <responseDataOnError>false</responseDataOnError>
+                  <responseDataOnError>true</responseDataOnError> <!-- Сохранять ответ при ошибке -->
                   <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
                   <assertionsResultsToSave>0</assertionsResultsToSave>
                   <bytes>true</bytes>
@@ -112,8 +108,8 @@ data:
             </ResultCollector>
             <hashTree/>
 
-          </hashTree> <!-- Конец Thread Group -->
-        </hashTree> <!-- Конец Test Plan -->
+          </hashTree>
+        </hashTree>
       </hashTree>
     </jmeterTestPlan>
 

@@ -5,184 +5,228 @@ import numpy as np
 import pandas as pd
 import time
 import os
-import sys 
+import sys
+import logging # Используем стандартный модуль логирования
+
+# --- Настройка Логирования ---
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s',
+                    handlers=[logging.StreamHandler(sys.stdout)]) # Вывод в stdout для Docker/K8s логов
 
 # --- Конфигурация ---
-MODEL_DIR = os.getenv("MODEL_DIR", "/models") # Путь к моделям из переменной окружения или по умолчанию
-MODEL_PROPHET_PATH = os.path.join(MODEL_DIR, "prophet_cpu.pkl") # Модель для CPU
-MODEL_LR_PATH = os.path.join(MODEL_DIR, "lr_scaler.pkl")       # Модель для определения реплик
-PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090") # URL Prometheus в кластере (проверьте имя сервиса!)
-APP_NAME = os.getenv("APP_NAME", "messenger-app") # Имя масштабируемого Deployment
-APP_NAMESPACE = os.getenv("APP_NAMESPACE", "messenger-app") # Неймспейс приложения (если отличается от default)
-MIN_REPLICAS = int(os.getenv("MIN_REPLICAS", 1))
-MAX_REPLICAS = int(os.getenv("MAX_REPLICAS", 25)) # Ваш максимум
-SLEEP_INTERVAL = int(os.getenv("SLEEP_INTERVAL", 300)) # Интервал проверки (5 минут)
-PROPHET_FREQ = os.getenv("PROPHET_FREQ", "5T") # Частота для Prophet (5 минут) - должна соответствовать шагу сбора метрик Prometheus
+MODEL_DIR = os.getenv("MODEL_DIR", "/models")
+MODEL_PROPHET_PATH = os.path.join(MODEL_DIR, "prophet_cpu.pkl")
+MODEL_LR_PATH = os.path.join(MODEL_DIR, "lr_scaler.pkl")
+PROMETHEUS_URL = os.getenv("PROMETHEUS_URL", "http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090")
+APP_NAME = os.getenv("APP_NAME", "messenger-app")
+APP_NAMESPACE = os.getenv("APP_NAMESPACE", "messenger-app")
+# Используем try-except для более надежного парсинга int из env
+try:
+    MIN_REPLICAS = int(os.getenv("MIN_REPLICAS", "1"))
+except ValueError:
+    logging.warning(f"Invalid MIN_REPLICAS value. Using default: 1")
+    MIN_REPLICAS = 1
+try:
+    MAX_REPLICAS = int(os.getenv("MAX_REPLICAS", "25"))
+except ValueError:
+    logging.warning(f"Invalid MAX_REPLICAS value. Using default: 25")
+    MAX_REPLICAS = 25
+try:
+    SLEEP_INTERVAL = int(os.getenv("SLEEP_INTERVAL", "300")) # 5 минут
+except ValueError:
+    logging.warning(f"Invalid SLEEP_INTERVAL value. Using default: 300")
+    SLEEP_INTERVAL = 300
+PROPHET_FREQ = os.getenv("PROPHET_FREQ", "5T")
 
 # --- Инициализация ---
-print(f"Initializing ML Scaler...")
-print(f"Model directory: {MODEL_DIR}")
-print(f"Prometheus URL: {PROMETHEUS_URL}")
-print(f"Target Deployment: {APP_NAMESPACE}/{APP_NAME}")
-print(f"Scaling range: {MIN_REPLICAS}-{MAX_REPLICAS} replicas")
-print(f"Check interval: {SLEEP_INTERVAL} seconds")
+logging.info("Initializing ML Scaler...")
+logging.info(f"Model directory: {MODEL_DIR}")
+logging.info(f"Prometheus URL: {PROMETHEUS_URL}")
+logging.info(f"Target Deployment: {APP_NAMESPACE}/{APP_NAME}")
+logging.info(f"Scaling range: {MIN_REPLICAS}-{MAX_REPLICAS} replicas")
+logging.info(f"Check interval: {SLEEP_INTERVAL} seconds")
 
-try:
-    # Пытаемся прочитать переменную окружения и преобразовать в float
-    TRAINING_DAYS_STR = os.getenv("TRAINING_DAYS", "7") # Получаем строку
-    TRAINING_DAYS = float(TRAINING_DAYS_STR) # Преобразуем в float
-    if TRAINING_DAYS <= 0:
-        print(f"Warning: TRAINING_DAYS value ({TRAINING_DAYS}) is not positive. Using default 7 days.", file=sys.stderr)
-        TRAINING_DAYS = 7.0 # Возвращаемся к дефолту, если значение некорректно
-except ValueError:
-    print(f"Warning: Invalid value for TRAINING_DAYS ('{TRAINING_DAYS_STR}'). Using default 7 days.", file=sys.stderr)
-    TRAINING_DAYS = 7.0 # Используем float и здесь
-    
-# Загрузка конфигурации Kubernetes (внутри кластера)
+# Загрузка конфигурации Kubernetes
 try:
     config.load_incluster_config()
-    print("Loaded in-cluster K8s config.")
+    logging.info("Loaded in-cluster K8s config.")
 except config.ConfigException:
     try:
-        config.load_kube_config() # Для локального запуска вне кластера
-        print("Loaded local K8s config.")
-    except config.ConfigException:
-        print("Could not load any K8s config.", file=sys.stderr)
-        exit(1)
+        config.load_kube_config()
+        logging.info("Loaded local K8s config (for testing outside cluster).")
+    except config.ConfigException as e:
+        logging.error(f"Could not load any Kubernetes config: {e}", exc_info=True)
+        sys.exit(1) # Критическая ошибка - выходим
 
 k8s_api = client.AppsV1Api()
-prom = PrometheusConnect(url=PROMETHEUS_URL, disable_ssl=True) # disable_ssl т.к. внутри кластера обычно http
+try:
+    prom = PrometheusConnect(url=PROMETHEUS_URL, disable_ssl=True)
+    logging.info("Prometheus connection initialized.")
+except Exception as e:
+    logging.error(f"Failed to initialize Prometheus connection: {e}", exc_info=True)
+    # Можно решить выйти или продолжить попытки позже
+    sys.exit(1)
 
 # --- Функции ---
 
-def load_models():
-    """Загружает модели с диска."""
-    try:
-        model_prophet = joblib.load(MODEL_PROPHET_PATH)
-        model_lr = joblib.load(MODEL_LR_PATH)
-        print("Models loaded successfully.")
-        return model_prophet, model_lr
-    except FileNotFoundError:
-        print(f"Warning: Models not found at {MODEL_DIR}. Waiting for initial training.", file=sys.stderr)
-        return None, None
-    except Exception as e:
-        print(f"Error loading models: {e}", file=sys.stderr)
-        return None, None
+def load_models_with_retry(retry_interval=30):
+    """Пытается загрузить модели, повторяя попытки."""
+    while True:
+        try:
+            logging.info(f"Attempting to load models from {MODEL_DIR}...")
+            # Проверяем существование файлов перед загрузкой
+            if not os.path.exists(MODEL_PROPHET_PATH):
+                raise FileNotFoundError(f"Prophet model not found: {MODEL_PROPHET_PATH}")
+            if not os.path.exists(MODEL_LR_PATH):
+                 raise FileNotFoundError(f"Scaler model not found: {MODEL_LR_PATH}")
+
+            model_prophet = joblib.load(MODEL_PROPHET_PATH)
+            model_lr = joblib.load(MODEL_LR_PATH)
+            logging.info("Models loaded successfully.")
+            return model_prophet, model_lr
+        except FileNotFoundError as e:
+            logging.warning(f"{e}. Models not yet available. Waiting for initial training. Retrying in {retry_interval}s...")
+        except Exception as e:
+            logging.error(f"Error loading models: {e}. Retrying in {retry_interval}s...", exc_info=True)
+        time.sleep(retry_interval)
 
 def get_current_metrics():
     """Получает текущие метрики из Prometheus."""
+    logging.debug("Fetching current metrics from Prometheus...")
     try:
-        # Важно: Имя контейнера должно совпадать с именем в Deployment! Обычно совпадает с app name.
-        # Запрос может потребовать настройки под вашу среду. '{}' может включать pod label selector.
-        # Используем rate для CPU
-        cpu_query = f"sum(rate(container_cpu_usage_seconds_total{{namespace='{APP_NAMESPACE}', container='{APP_NAME}'}}[5m]))"
-        # Используем актуальное имя метрики соединений
-        connections_query = f"sum(messenger_active_connections{{namespace='{APP_NAMESPACE}', app='{APP_NAME}'}})" # Уточните селекторы app label
+        # Определяем запросы
+        cpu_query = f"sum(rate(container_cpu_usage_seconds_total{{namespace='{APP_NAMESPACE}', container='{APP_NAME}'}}[5m])) by (namespace)"
+        connections_query = f"sum(messenger_active_connections{{namespace='{APP_NAMESPACE}', app='{APP_NAME}'}}) by (namespace)"
 
         cpu_data = prom.custom_query(query=cpu_query)
         connections_data = prom.custom_query(query=connections_query)
 
+        # Извлекаем значения, обрабатывая пустой результат
         current_cpu = float(cpu_data[0]['value'][1]) if cpu_data else 0.0
-        current_connections = float(connections_data[0]['value'][1]) if connections_data else 0.0
+        # Ограничиваем CPU снизу нулем на всякий случай
+        current_cpu = max(0.0, current_cpu)
 
-        print(f"Current metrics: CPU usage rate: {current_cpu:.4f}, Active connections: {current_connections}")
+        current_connections = float(connections_data[0]['value'][1]) if connections_data else 0.0
+        current_connections = max(0.0, current_connections) # Соединения не могут быть отрицательными
+
+        logging.info(f"Current metrics: CPU rate: {current_cpu:.4f}, Connections: {current_connections:.0f}")
         return current_cpu, current_connections
 
     except Exception as e:
-        print(f"Error fetching metrics from Prometheus: {e}", file=sys.stderr)
-        return None, None
+        logging.error(f"Error fetching metrics from Prometheus: {e}", exc_info=True)
+        return None, None # Возвращаем None при ошибке
 
 def predict_cpu(model_prophet):
     """Прогнозирует CPU на следующий период."""
+    logging.debug("Predicting next CPU usage...")
     try:
-        # Создаем DataFrame для прогноза на 1 шаг вперед
+        # Создаем DataFrame для прогноза на 1 шаг вперед (частота из PROPHET_FREQ)
+        # include_history=False важно, чтобы не пересчитывать историю
         future = model_prophet.make_future_dataframe(periods=1, freq=PROPHET_FREQ, include_history=False)
         forecast = model_prophet.predict(future)
+        # Извлекаем предсказанное значение ('yhat') для последнего шага
         predicted_cpu = forecast["yhat"].iloc[-1]
-        # Ограничим прогноз снизу нулем
+        # Ограничиваем прогноз снизу нулем
         predicted_cpu = max(0, predicted_cpu)
-        print(f"Predicted CPU usage (yhat): {predicted_cpu:.4f}")
+        logging.info(f"Predicted CPU usage (yhat): {predicted_cpu:.4f}")
         return predicted_cpu
     except Exception as e:
-        print(f"Error predicting CPU: {e}", file=sys.stderr)
-        return None
+        logging.error(f"Error predicting CPU with Prophet: {e}", exc_info=True)
+        return None # Возвращаем None при ошибке
 
 def predict_replicas(model_lr, predicted_cpu, current_connections):
-    """Определяет необходимое количество реплик."""
+    """Определяет необходимое количество реплик на основе прогноза CPU и текущих соединений."""
+    logging.debug(f"Predicting replicas based on predicted_cpu={predicted_cpu:.4f}, current_connections={current_connections:.0f}")
+    # ВАЖНОЕ ЗАМЕЧАНИЕ: Использование предсказанного CPU и ТЕКУЩИХ соединений - это гибридный подход.
+    # Для чисто предиктивного масштабирования нужно было бы предсказывать и соединения.
     try:
         # Создаем DataFrame с фичами для модели scaler'а
-        # Внимание: порядок фичей должен совпадать с тем, что было при обучении!
-        # Предполагаем порядок: ['cpu_usage', 'active_connections']
+        # Убедитесь, что названия колонок ('cpu_usage', 'active_connections')
+        # и их порядок ТОЧНО совпадают с теми, что использовались при ОБУЧЕНИИ модели model_lr!
         features = pd.DataFrame([[predicted_cpu, current_connections]], columns=['cpu_usage', 'active_connections'])
 
-        # Применяем scaler (если он был частью пайплайна при обучении)
-        # Если scaler обучался отдельно, его тоже нужно загрузить и применить:
-        # features_scaled = scaler.transform(features)
-        # replicas_float = model_lr.predict(features_scaled)[0]
-
-        # Если модель - это Pipeline (Scaler + Regressor)
+        # Используем обученный пайплайн (предполагается, что model_lr - это Pipeline)
         replicas_float = model_lr.predict(features)[0]
 
-        # Округляем и ограничиваем результат
-        replicas = int(np.round(replicas_float))
-        replicas = max(MIN_REPLICAS, min(replicas, MAX_REPLICAS))
-        print(f"Predicted replicas (float): {replicas_float:.2f}, Rounded & Clamped: {replicas}")
-        return replicas
+        # Округляем и ограничиваем результат заданными MIN/MAX
+        replicas_rounded = int(np.round(replicas_float))
+        target_replicas = max(MIN_REPLICAS, min(replicas_rounded, MAX_REPLICAS))
+
+        logging.info(f"Predicted replicas (raw): {replicas_float:.2f}, Rounded: {replicas_rounded}, Clamped Target: {target_replicas}")
+        return target_replicas
     except Exception as e:
-        print(f"Error predicting replicas: {e}", file=sys.stderr)
+        logging.error(f"Error predicting replicas: {e}", exc_info=True)
+        logging.warning(f"Falling back to minimum replicas: {MIN_REPLICAS}")
         return MIN_REPLICAS # Возвращаем минимум в случае ошибки
 
 def scale_deployment(target_replicas):
-    """Масштабирует Deployment до нужного количества реплик."""
+    """Масштабирует Deployment до target_replicas."""
     try:
-        # Получаем текущее состояние scale
+        logging.debug(f"Reading current scale for deployment '{APP_NAMESPACE}/{APP_NAME}'...")
         current_scale = k8s_api.read_namespaced_deployment_scale(name=APP_NAME, namespace=APP_NAMESPACE)
         current_replicas = current_scale.spec.replicas
+        logging.info(f"Current replica count: {current_replicas}")
 
         if current_replicas == target_replicas:
-            print(f"No scaling needed. Current replicas: {current_replicas}")
-            return
+            logging.info(f"Target replicas ({target_replicas}) match current count. No scaling needed.")
+            return True # Масштабирование не требовалось
 
-        print(f"Scaling deployment '{APP_NAMESPACE}/{APP_NAME}' from {current_replicas} to {target_replicas} replicas...")
+        logging.info(f"Scaling deployment '{APP_NAMESPACE}/{APP_NAME}' from {current_replicas} to {target_replicas} replicas...")
+        # Создаем тело запроса для patch
         body = {"spec": {"replicas": target_replicas}}
+        # Выполняем patch запрос
         k8s_api.patch_namespaced_deployment_scale(
             name=APP_NAME,
             namespace=APP_NAMESPACE,
             body=body
         )
-        print(f"Scaling request sent successfully.")
+        logging.info(f"Scaling request sent successfully to {target_replicas} replicas.")
+        return True # Масштабирование выполнено
 
     except client.ApiException as e:
-        print(f"Kubernetes API error scaling deployment: {e}", file=sys.stderr)
+        # Обрабатываем ошибки Kubernetes API
+        logging.error(f"Kubernetes API error scaling deployment: {e.status} {e.reason} - {e.body}", exc_info=True)
+        return False # Ошибка масштабирования
     except Exception as e:
-        print(f"Error scaling deployment: {e}", file=sys.stderr)
+        # Обрабатываем другие возможные ошибки
+        logging.error(f"Unexpected error scaling deployment: {e}", exc_info=True)
+        return False # Ошибка масштабирования
 
 # --- Основной Цикл ---
-model_prophet, model_lr = None, None
+logging.info("Waiting for initial model load...")
+# Пытаемся загрузить модели при старте, ждем, пока они не появятся
+model_prophet, model_lr = load_models_with_retry(retry_interval=60) # Повтор каждые 60 сек
 
+if not model_prophet or not model_lr:
+     logging.error("Failed to load models after multiple retries. Exiting.")
+     sys.exit(1)
+
+logging.info("Models loaded. Starting main scaling loop.")
+
+# ================= КЛЮЧЕВОЙ БЛОК =================
 while True:
-    if model_prophet is None or model_lr is None:
-        print("Attempting to load models...")
-        model_prophet, model_lr = load_models()
+    logging.info("--- Running Scaling Check ---")
 
-    if model_prophet and model_lr:
-        print("\n--- Running Scaling Check ---")
-        current_cpu, current_connections = get_current_metrics()
+    # 1. Получаем текущие метрики
+    current_cpu, current_connections = get_current_metrics()
 
-        if current_cpu is not None and current_connections is not None:
-            predicted_cpu = predict_cpu(model_prophet) # Используем только Prophet для прогноза CPU
+    if current_cpu is not None and current_connections is not None:
+        # 2. Предсказываем будущую нагрузку CPU
+        predicted_cpu = predict_cpu(model_prophet)
 
-            if predicted_cpu is not None:
-                # Используем ПРОГНОЗ CPU и ТЕКУЩЕЕ число соединений для расчета реплик
-                # Альтернатива: обучить Prophet и для соединений, если они имеют тренд/сезонность.
-                target_replicas = predict_replicas(model_lr, predicted_cpu, current_connections)
-                scale_deployment(target_replicas)
-            else:
-                print("Skipping replica prediction due to CPU prediction error.")
+        if predicted_cpu is not None:
+            # 3. Предсказываем необходимое количество реплик
+            target_replicas = predict_replicas(model_lr, predicted_cpu, current_connections)
+
+            # 4. Выполняем масштабирование
+            scale_successful = scale_deployment(target_replicas)
+            if not scale_successful:
+                 logging.warning("Scaling operation failed. Check previous errors.")
         else:
-            print("Skipping scaling check due to metric fetching error.")
+            logging.warning("Skipping replica prediction due to CPU prediction error.")
     else:
-        print("Models not available, skipping scaling check.")
+        logging.warning("Skipping scaling check due to metric fetching error.")
 
-    print(f"--- Sleeping for {SLEEP_INTERVAL} seconds ---")
+    # --- Пауза перед следующей проверкой ---
+    logging.info(f"--- Sleeping for {SLEEP_INTERVAL} seconds ---")
     time.sleep(SLEEP_INTERVAL)

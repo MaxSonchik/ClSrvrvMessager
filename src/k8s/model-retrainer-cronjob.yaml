@@ -32,7 +32,7 @@ spec:
               - name: APP_NAMESPACE
                 value: "messenger-app"
               - name: TRAINING_DAYS
-                value: "0.001" # Обучение на данных за 7 дней
+                value: "0.01" # Обучение на данных за 7 дней
               - name: PROMETHEUS_STEP
                 value: "1m" # Шаг данных
             volumeMounts:

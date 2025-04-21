@@ -76,7 +76,9 @@
         "typeindex": "cpp",
         "*.ipp": "cpp",
         "fstream": "cpp",
-        "text_encoding": "cpp"
+        "text_encoding": "cpp",
+        "scoped_allocator": "cpp",
+        "cfenv": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

@@ -42,7 +42,7 @@ spec:
           volumeMounts:
             - name: model-storage # Имя тома
               mountPath: /models # Путь монтирования внутри контейнера
-              readOnly: true # Scaler только читает модели
+              #readOnly: true # Scaler только читает модели
       volumes:
         - name: model-storage # Имя тома
           persistentVolumeClaim:
