@@ -1,19 +1,19 @@
 #include "tcp_server.hpp"
-#include <boost/asio/strand.hpp> // Для синхронизации обработчиков таймера
-#include <boost/beast/core/detail/base64.hpp> // Для Base64 (если выбран этот метод для файлов)
+#include <boost/asio/strand.hpp>
+#include <boost/beast/core/detail/base64.hpp>
 #include <iostream>
 #include <istream>
 #include <memory>
-#include <deque> // Для очереди записи
+#include <deque>
 #include <optional>
 
 namespace tcp_messenger {
 
 using boost::asio::ip::tcp;
 using json = nlohmann::json;
-namespace base64 = boost::beast::detail::base64; // Псевдоним для Base64
+namespace base64 = boost::beast::detail::base64;
 
-// --- Реализация TCPServer::Session ---
+
 
 TCPServer::Session::Session(TCPServer& server, tcp::socket socket)
     : server_(server), socket_(std::move(socket)), authenticated_(false), remote_ep_str_("unknown")

@@ -7,9 +7,9 @@
 // Helper для вывода JSON в stdout
 void output_json(const tcp_messenger::json& j) {
     std::cout << j.dump() << std::endl; // endl для flush
+    std::cout.flush();
 }
 
-// --- Обновленные коллбэки для вывода JSON ---
 void handle_register_result(bool success, const std::string& message) {
     output_json({
         {"type", "register_result"},
@@ -69,7 +69,7 @@ void handle_connection_status(bool is_connected) {
         {"connected", is_connected}
     });
 }
-
+//! ЗАПУСК ПРОГРАММЫ ПРОИСХОДИТ ПУТЕМ ./messenger_tcp_client <IP> <порт>(по умолчанию 8080)
 int main(int argc, char* argv[]) {
     // Ожидаем аргументы: <host> <port>
     if (argc != 3) {

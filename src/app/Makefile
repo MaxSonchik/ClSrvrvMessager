@@ -12,8 +12,8 @@ INCLUDES = $(PROJECT_INCLUDES) $(EXTERNAL_INCLUDES)
 
 # Пути и флаги линковщика
 LDFLAGS = -L/usr/local/lib # Путь к библиотекам prometheus-cpp (если они там, проверьте!)
-LIBS_SERVER = -lboost_system -lboost_thread -lprometheus-cpp-pull -lprometheus-cpp-core -lsqlite3 -largon2
-LIBS_CLIENT = -lboost_system -lboost_thread
+LIBS_SERVER = -lboost_system -lboost_thread -lprometheus-cpp-pull -lprometheus-cpp-core -lsqlite3 -largon2 -lstdc++
+LIBS_CLIENT = -lboost_system -lboost_thread -lstdc++
 
 # Исходные файлы C++ (исключая GUI)
 SERVER_SOURCES = $(wildcard src/main_tcp_server.cpp src/tcp/tcp_server.cpp src/database/database_manager.cpp src/common/json_util.cpp)
