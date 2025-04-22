@@ -1,6 +1,7 @@
-// src/main_tcp_server.cpp - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// src/main_tcp_server.cpp - ВЕРСИЯ С ЯВНЫМ ТИПОМ WORK GUARD
 #include "tcp/tcp_server.hpp"
 #include <boost/asio/signal_set.hpp>
+#include <boost/asio/executor_work_guard.hpp> // Подключаем work guard
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -24,29 +25,18 @@ ServerConfig parse_args(int argc, char* argv[]) {
         } else if ((args[i] == "-port" || args[i] == "--app-port") && i + 1 < args.size()) {
             try {
                 int port_val = std::stoi(args[++i]);
-                // Проверка диапазона порта
                 if (port_val > 0 && port_val <= 65535) {
                      config.app_port = static_cast<unsigned short>(port_val);
-                } else {
-                     std::cerr << "Warning: Invalid app port value ignored: " << port_val << std::endl;
-                }
-            } catch (const std::exception& e) {
-                 std::cerr << "Warning: Invalid app port value ignored: " << args[i] << " (" << e.what() << ")" << std::endl;
-            }
+                } else { std::cerr << "Warning: Invalid app port value ignored: " << port_val << std::endl; }
+            } catch (const std::exception& e) { std::cerr << "Warning: Invalid app port value ignored: " << args[i] << " (" << e.what() << ")" << std::endl; }
         } else if ((args[i] == "-mport" || args[i] == "--metrics-port") && i + 1 < args.size()) {
              try {
                  int port_val = std::stoi(args[++i]);
                   if (port_val > 0 && port_val <= 65535) {
                      config.metrics_port = static_cast<unsigned short>(port_val);
-                 } else {
-                     std::cerr << "Warning: Invalid metrics port value ignored: " << port_val << std::endl;
-                 }
-            } catch (const std::exception& e) {
-                 std::cerr << "Warning: Invalid metrics port value ignored: " << args[i] << " (" << e.what() << ")" << std::endl;
-            }
-        } else {
-            std::cerr << "Warning: Unknown argument ignored: " << args[i] << std::endl;
-        }
+                 } else { std::cerr << "Warning: Invalid metrics port value ignored: " << port_val << std::endl; }
+            } catch (const std::exception& e) { std::cerr << "Warning: Invalid metrics port value ignored: " << args[i] << " (" << e.what() << ")" << std::endl; }
+        } else { std::cerr << "Warning: Unknown argument ignored: " << args[i] << std::endl; }
     }
     return config;
 }
@@ -56,22 +46,24 @@ int main(int argc, char* argv[]) {
     try {
         ServerConfig config = parse_args(argc, argv);
 
-        // Используем один io_context
         boost::asio::io_context io_context;
 
-        // Обработчик сигналов SIGINT (Ctrl+C) и SIGTERM (стандартный сигнал остановки)
+        // --- Создаем Work Guard с явным типом экзекутора ---
+        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard(io_context.get_executor());
+
+        // Обработчик сигналов SIGINT (Ctrl+C) и SIGTERM
         boost::asio::signal_set signals(io_context, SIGINT, SIGTERM);
         signals.async_wait([&](const boost::system::error_code& /*error*/, int signal_number) {
-            // Этот код выполнится при получении сигнала
             std::cout << "\n[Main] Signal " << signal_number << " received, stopping io_context..." << std::endl;
-            // Останавливаем io_context. Это приведет к возврату из io_context.run() ниже.
+            // Останавливаем io_context. work_guard будет уничтожен позже,
+            // но io_context.stop() имеет приоритет.
             io_context.stop();
         });
 
         // Создаем и инициализируем сервер
         tcp_messenger::TCPServer server(io_context, config.db_path, config.app_port, config.metrics_port);
 
-        // Запускаем асинхронные операции сервера (accept, таймеры)
+        // Запускаем асинхронные операции сервера
         server.start();
 
         std::cout << "[Main] TCP Server started. App port: " << config.app_port
@@ -79,25 +71,20 @@ int main(int argc, char* argv[]) {
                   << ", DB path: " << config.db_path << std::endl;
         std::cout << "[Main] Running event loop. Press Ctrl+C to exit." << std::endl;
 
-        // Запускаем основной цикл обработки событий Asio в этом потоке.
-        // Он будет работать, пока есть активные асинхронные операции
-        // или пока не будет вызван io_context.stop() (через обработчик сигнала).
+        // Запускаем основной цикл обработки событий.
         io_context.run();
 
         // --- Код ниже выполнится только после остановки io_context ---
-
         std::cout << "[Main] IO context stopped. Cleaning up server resources..." << std::endl;
-        // Вызываем stop сервера для корректного закрытия сокетов, отмены таймеров и т.д.
         server.stop();
         std::cout << "[Main] Server cleanup finished. Exiting." << std::endl;
 
     } catch (const std::exception& e) {
-        // Логируем критические ошибки в stderr, чтобы они попали в journalctl
         std::cerr << "[Main] Server critical exception: " << e.what() << std::endl;
-        return 1; // Завершаемся с кодом ошибки
+        return 1;
     } catch (...) {
         std::cerr << "[Main] Unknown server critical exception." << std::endl;
-        return 1; // Завершаемся с кодом ошибки
+        return 1;
     }
-    return 0; // Успешное завершение после штатной остановки
+    return 0;
 }
