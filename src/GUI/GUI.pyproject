@@ -1,0 +1,10 @@
+{
+    "files": [
+        "style.py",
+        "main_window.py",
+        "main.py",
+        "mainwindow.ui",
+        "send_icon.png",
+        "icons/send_icon.png"
+    ]
+}
