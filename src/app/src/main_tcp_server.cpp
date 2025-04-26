@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
         // 3. Создаем "хранителя работы" (work guard)
         // Это гарантирует, что io_context.run() не завершится немедленно,
         // если в очереди нет активных обработчиков.
-        auto work_guard = boost::asio::make_executor_work_guard(io_context.get_executor());
+        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard(io_context.get_executor());
 
         // 4. Настраиваем обработку сигналов для корректной остановки
         // Ловим SIGINT (Ctrl+C) и SIGTERM (стандартный сигнал остановки от systemd/kill)
