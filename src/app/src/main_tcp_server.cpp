@@ -135,7 +135,7 @@ int main(int argc, char* argv[]) {
         std::cout << "[Main DEBUG] io_context created." << std::endl; std::cout.flush();
 
         // Создаем Work Guard
-        auto work_guard = boost::asio::make_executor_work_guard(io_context.get_executor());
+        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> work_guard(io_context.get_executor());
         std::cout << "[Main DEBUG] Work guard created." << std::endl; std::cout.flush();
 
         // Настраиваем сигналы
