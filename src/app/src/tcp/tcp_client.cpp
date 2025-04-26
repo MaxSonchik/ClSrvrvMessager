@@ -231,11 +231,13 @@ void TCPClient::send_json(const json& data) {
     // Используем post для безопасной передачи задачи в поток io_context
     boost::asio::post(io_context_, [this, data_str, data_copy = data]() {
          client_log("DEBUG", "Executing post lambda in send_json for event: " + data_copy.value("command", data_copy.value("event", "N/A"))); // Используем копию для лога
-         std::lock_guard<std::mutex> lock(write_mutex_); // Защищаем очередь
-         bool write_in_progress = !write_msgs_.empty();
-         write_msgs_.push_back(std::move(data_str)); // Перемещаем строку в очередь
-
-         if (!write_in_progress) {
+         bool start_write = false;
+        {
+           std::lock_guard<std::mutex> lock(write_mutex_);
+           start_write = write_msgs_.empty();            // очередь была пуста?
+           write_msgs_.push_back(std::move(data_str));
+        }  
+         if (start_write) {
              // Запускаем do_write только если очередь была пуста
              client_log("DEBUG", "Write not in progress, calling do_write().");
              do_write(); // do_write сама возьмет мьютекс позже
