@@ -14,9 +14,9 @@ CXXFLAGS   := -std=c++17 -pthread -Wall -Wextra -g -O2 \
 # Linker flags and libraries
 # -----------------------------------------------------------------------------
 LDFLAGS    := -L/opt/homebrew/lib -L/opt/local/lib -L/usr/local/lib
-LIBS_SERVER := -lboost_system-mt -lprometheus-cpp-pull -lprometheus-cpp-core \
+LIBS_SERVER := -lboost_system -lprometheus-cpp-pull -lprometheus-cpp-core \
                -lpthread -lsqlite3 -largon2 -lstdc++ -lm
-LIBS_CLIENT := -lboost_system-mt -lpthread -lstdc++
+LIBS_CLIENT := -lboost_system -lpthread -lstdc++
 
 # -----------------------------------------------------------------------------
 # Source file groups

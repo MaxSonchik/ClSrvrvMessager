@@ -212,4 +212,4 @@ int main(int argc, char* argv[]) {
 
     // Успешное завершение программы
     return 0;
-} // Конец main
+}
