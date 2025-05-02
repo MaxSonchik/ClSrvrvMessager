@@ -231,11 +231,13 @@ void TCPClient::send_json(const json& data) {
     // Используем post для безопасной передачи задачи в поток io_context
     boost::asio::post(io_context_, [this, data_str, data_copy = data]() {
          client_log("DEBUG", "Executing post lambda in send_json for event: " + data_copy.value("command", data_copy.value("event", "N/A"))); // Используем копию для лога
-         std::lock_guard<std::mutex> lock(write_mutex_); // Защищаем очередь
-         bool write_in_progress = !write_msgs_.empty();
-         write_msgs_.push_back(std::move(data_str)); // Перемещаем строку в очередь
-
-         if (!write_in_progress) {
+         bool start_write = false;
+        {
+           std::lock_guard<std::mutex> lock(write_mutex_);
+           start_write = write_msgs_.empty();            // очередь была пуста?
+           write_msgs_.push_back(std::move(data_str));
+        }  
+         if (start_write) {
              // Запускаем do_write только если очередь была пуста
              client_log("DEBUG", "Write not in progress, calling do_write().");
              do_write(); // do_write сама возьмет мьютекс позже
@@ -247,56 +249,59 @@ void TCPClient::send_json(const json& data) {
 
 
 // Запускает асинхронную запись (вызывается только из потока io_context)
-void TCPClient::do_write() {
-    // Мьютекс УЖЕ должен быть взят вызывающей функцией, если мы здесь не из коллбэка async_write
-    // Но для безопасности и ясности возьмем его здесь, т.к. коллбэк тоже вызывает do_write
-    std::lock_guard<std::mutex> lock(write_mutex_);
+void TCPClient::do_write()
+{
+    /* 1. Берём из очереди первое сообщение, но удерживаем мьютекс
+          только на короткое время — пока читаем/извлекаем данные. */
+    std::string msg;
+    {
+        std::lock_guard<std::mutex> lock(write_mutex_);
+        if (write_msgs_.empty() || !socket_.is_open())
+            return;                     // нечего отправлять
+        msg = write_msgs_.front();      // копируем строку
+    }                                   // mutex освобождён
 
-    if (write_msgs_.empty() || !socket_.is_open()) {
-        return; // Нечего отправлять или сокет закрыт
-    }
+    client_log("DEBUG",
+               "Starting async_write for: " + msg.substr(0,100) + "...");
 
-    client_log("DEBUG", "Starting async_write for: " + write_msgs_.front().substr(0, 100) + "...");
+    /* 2. Запускаем асинхронную запись уже без удержания мьютекса. */
+    boost::asio::async_write(
+        socket_, boost::asio::buffer(msg),
+        [this](boost::system::error_code ec, std::size_t length)
+        {
+            if (!running_) return;
 
-    // Запускаем асинхронную запись первого сообщения из очереди
-    boost::asio::async_write(socket_, boost::asio::buffer(write_msgs_.front()),
-        [this](boost::system::error_code ec, std::size_t length) {
-            // Этот коллбэк выполняется в потоке io_context
+            bool queue_has_more = false;       // нужно ли отправлять следующее?
 
-            if (!running_) return; // Проверка на случай остановки во время записи
+            {
+                std::lock_guard<std::mutex> lock(write_mutex_);
 
-            // Берем мьютекс для безопасной работы с очередью и логгирования
-            std::lock_guard<std::mutex> lock(write_mutex_);
-            std::string message_prefix = write_msgs_.empty() ? "N/A" : write_msgs_.front().substr(0, 50); // Для лога ошибки
+                if (!ec) {                     // запись успешна
+                    if (!write_msgs_.empty())
+                        write_msgs_.pop_front();   // убираем отправленное
+                    queue_has_more = !write_msgs_.empty();
+                } else {                       // ошибка записи
+                    write_msgs_.clear();
+                }
+            }   // mutex снова освобождён
 
             if (!ec) {
-                // Запись успешна
-                client_log("DEBUG", "async_write completed successfully. Bytes: " + std::to_string(length) + ". Msg prefix: " + message_prefix + "...");
-                if (!write_msgs_.empty()) {
-                    write_msgs_.pop_front(); // Удаляем отправленное сообщение
-                    if (!write_msgs_.empty()) {
-                        // Если есть еще сообщения, запускаем следующую запись
-                        client_log("DEBUG", "More messages in queue, calling do_write() again.");
-                        do_write(); // Рекурсивный вызов (безопасно, т.к. асинхронный)
-                    } else {
-                        client_log("DEBUG", "Write queue is now empty.");
-                    }
-                } else {
-                     client_log("WARNING", "Write queue was empty after successful write callback?");
-                }
-            } else if (ec == boost::asio::error::operation_aborted) {
-                 client_log("INFO", "Write operation aborted (likely client stopping).");
-                 write_msgs_.clear(); // Очищаем очередь, т.к. останавливаемся
-            } else {
-                // Ошибка записи
-                client_log("ERROR", "async_write failed: " + ec.message() + ". Msg prefix: " + message_prefix + "...");
-                write_msgs_.clear(); // Очищаем очередь при ошибке
+                client_log("DEBUG",
+                           "async_write completed. Bytes: "
+                           + std::to_string(length) + '.');
 
-                // Закрываем соединение асинхронно, чтобы избежать рекурсивных вызовов close_connection
-                // Используем post для выполнения в io_context
-                 boost::asio::post(io_context_, [this, reason = "Write error: " + ec.message()](){
-                     close_connection(reason);
-                 });
+                if (queue_has_more)             // есть ещё — запускаем снова
+                    do_write();
+            }
+            else if (ec == boost::asio::error::operation_aborted) {
+                client_log("INFO", "Write operation aborted.");
+            }
+            else {
+                client_log("ERROR",
+                           "async_write failed: " + ec.message());
+                boost::asio::post(io_context_, [this, reason =
+                    "Write error: " + ec.message()]()
+                {   close_connection(reason); });
             }
         });
 }
@@ -344,28 +349,26 @@ void TCPClient::register_user(const std::string& username, const std::string& pa
     send_json(reg_msg);
 }
 
-void TCPClient::login(const std::string& username, const std::string& password) {
-    json login_msg;
-    login_msg["command"] = "login";
-    login_msg["username"] = username;
-    login_msg["password"] = password; // TODO: Передавать пароль безопасно (TLS)!
-    // current_username_ лучше устанавливать после получения login_success от сервера
-    // current_username_ = username; // Пока уберем
-    send_json(login_msg);
-}
+void TCPClient::login(const std::string& username, const std::string& password)
+    {
+        json login_msg = common::base_event("login");   // ←---
+        login_msg["command"]  = "login";
+        login_msg["username"] = username;
+        login_msg["password"] = password;
+        send_json(login_msg);
+    }
 
-void TCPClient::send_message(const std::string &to, const std::string &text) {
-     // TODO: Возможно, стоит проверять current_username_ здесь, чтобы GUI знал, залогинен ли пользователь
-     json msg;
-     msg["command"] = "send_message";
-     msg["to"] = to;
-     msg["text"] = text;
-     // Сервер использует имя пользователя из аутентифицированной сессии как 'from'
-    send_json(msg);
-}
+void TCPClient::send_message(const std::string& to, const std::string& text)
+    {
+        json msg = common::base_event("message");       // ←---
+        msg["command"] = "send_message";
+        msg["to"]   = to;
+        msg["text"] = text;
+        send_json(msg);
+    }
 
 void TCPClient::add_task(const std::string& task_name, const std::string& description, const std::string& trigger_time, int notify_offset) {
-     json task_msg;
+     json task_msg = common::base_event("add_task");;
      task_msg["command"] = "add_task";
      task_msg["task_name"] = task_name;
      task_msg["description"] = description;
