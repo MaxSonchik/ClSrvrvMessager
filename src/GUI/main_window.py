@@ -1,6 +1,7 @@
 #main_window.py
 import sys, os
 import json # Импортируем для работы с JSON командами
+import sqlite3
 
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QMessageBox, QStyle,
                              QWidget, QLineEdit, QListWidget, QListWidgetItem,
@@ -10,6 +11,7 @@ from PyQt5.QtCore import pyqtSlot, QFile, QIODevice, QSize, Qt, QObject, pyqtSig
 from PyQt5.QtNetwork import QTcpSocket, QAbstractSocket
 from PyQt5.QtGui import QIcon
 from PyQt5 import uic
+from pathlib import Path
 
 # Предполагаем, что стиль загружается из другого файла
 try:
@@ -187,8 +189,12 @@ class MainWindow(QMainWindow):
         if not hasattr(self, "contactListWidget"):
             return
 
-        import sqlite3
-        DB_PATH = "/Users/administrator/ClSrvrvMessager-2-dev2/src/app/messenger.db"
+        if getattr(sys, 'frozen', False):              # запущено из PyInstaller
+            _START_DIR = os.path.dirname(sys.executable)
+        else:                                          # обычный .py
+            _START_DIR = os.path.dirname(os.path.abspath(__file__))
+
+        DB_PATH = os.path.abspath(os.path.join(_START_DIR, '..', '..', 'app', 'messenger.db'))
 
         try:
             with sqlite3.connect(DB_PATH) as conn:

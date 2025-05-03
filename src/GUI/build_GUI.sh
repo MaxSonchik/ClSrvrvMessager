@@ -1,14 +1,21 @@
 #!/usr/bin/env bash
-set -e
-cd "$(dirname "$0")"        # в папку GUI
+set -euo pipefail
+cd "$(dirname "$0")"      # ← каталог src/GUI
 
-python3 -m pip install -r requirements.txt
-python3 -m pip install pyinstaller      # локально в venv / user-site
+PY=python3
 
-# чистим старый билд
-rm -rf build dist messenger_gui.spec
+# ── создаём и активируем venv ───────────────────────────────
+if [ ! -d .venv ]; then
+  "${PY}" -m venv .venv
+fi
+source .venv/bin/activate
+pip install -U pip wheel
+pip install -r requirements.txt
+# ─────────────────────────────────────────────────────────────
 
-# собираем
-pyinstaller messenger_gui.spec --onefile --windowed
-echo
-echo "Готово: ./dist/messenger_gui  (или messenger_gui.app на macOS)"
+# ── сборка PyInstaller ──────────────────────────────────────
+pyinstaller -F main.py \
+  --name messenger_gui \
+  --add-data "mainwindow.ui:." \
+  --add-data "icons/send_icon.png:icons"
+# ─────────────────────────────────────────────────────────────

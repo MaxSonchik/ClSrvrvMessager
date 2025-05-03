@@ -129,12 +129,9 @@ iwyu: compile_commands
 
 .PHONY: gui
 gui:
-	$(MAKE) -C $(GUI_DIR) build_gui
-
-# GUI/Makefile  (очень короткий)
-.PHONY: build_gui
-build_gui:
-	./build_gui.sh
+	@echo "[GUI] building messenger_gui …"
+	@cd $(GUI_DIR) && ./build_GUI.sh
 
 .PHONY: package
-package: all gui         # all = C++ сервер/клиент, gui = бинарник GUI
+package: all gui                        
+	@echo "[PACKAGE] done."         # all = C++ сервер/клиент, gui = бинарник GUI
