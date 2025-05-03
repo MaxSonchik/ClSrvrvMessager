@@ -1,172 +1,170 @@
+# client_handler.py
+"""
+Qt-обёртка над TCP-протоколом мессенджера.
+
+- при отправке автоматически добавляет поле `event`
+  (сервер роутит сообщения именно по event);
+- преобразует ответы сервера с `event` в старую схему
+  с `type`, чтобы остальной GUI не менять.
+"""
 import json
-from PyQt5.QtCore import QObject, pyqtSignal, QByteArray, QIODevice
+from PyQt5.QtCore    import QObject, pyqtSignal, QByteArray
 from PyQt5.QtNetwork import QTcpSocket, QAbstractSocket
 
+DEFAULT_HOST = "127.0.0.1"
+DEFAULT_PORT = 8080
+
+
 class ClientHandler(QObject):
-    # --- Сигналы для MainWindow ---
-    connected = pyqtSignal()
-    disconnected = pyqtSignal()
-    error_occurred = pyqtSignal(str) # Сигнал для общих ошибок сокета/сети
-    server_response = pyqtSignal(dict) # Общий сигнал для всех JSON ответов от сервера
+    # ────────── сигналы наружу ──────────
+    connected         = pyqtSignal()
+    disconnected      = pyqtSignal()
+    error_occurred    = pyqtSignal(str)
 
-    # Сигналы для конкретных событий (альтернатива server_response)
+    server_response   = pyqtSignal(dict)          # «сырые» JSON-ы
+
     connection_status = pyqtSignal(bool)
-    login_result = pyqtSignal(bool, str)
-    register_result = pyqtSignal(bool, str)
-    message_received = pyqtSignal(str, str, str) # from, to, text
-    server_error = pyqtSignal(str) # Ошибки, о которых сообщил сервер
-    # TODO: Добавить сигналы для задач, файлов и т.д.
+    login_result      = pyqtSignal(bool, str)
+    register_result   = pyqtSignal(bool, str)
+    message_received  = pyqtSignal(str, str, str)
+    server_error      = pyqtSignal(str)
+    # ─────────────────────────────────────
 
-    def __init__(self, host, port, parent=None):
+    # ------------------------------------------------------------------
+    def __init__(self, host: str = DEFAULT_HOST,
+                       port: int = DEFAULT_PORT,
+                       parent=None):
         super().__init__(parent)
-        self.host = host
-        self.port = int(port) # QTcpSocket хочет int
-        self.socket = QTcpSocket(self)
-        self.buffer = QByteArray()
-        self._is_connected = False
+        self.host, self.port = host, int(port)
 
-        # Подключаем сигналы сокета к нашим слотам
-        self.socket.connected.connect(self.on_connected)
-        self.socket.disconnected.connect(self.on_disconnected)
-        self.socket.readyRead.connect(self.on_ready_read)
-        # Обработка ошибок сокета
-        self.socket.errorOccurred.connect(self.on_socket_error)
-        # Альтернативный способ обработки ошибок (старый стиль)
-        # self.socket.error.connect(self.on_socket_error_legacy)
+        self.socket  = QTcpSocket(self)
+        self.buffer  = QByteArray()
+        self._online = False
 
+        self.socket.connected.connect(self._on_connected)
+        self.socket.disconnected.connect(self._on_disconnected)
+        self.socket.readyRead.connect(self._on_ready_read)
+        self.socket.errorOccurred.connect(self._on_socket_error)
+
+    # ===== public helpers =====
     def connect_to_server(self):
-        print(f"[ClientHandler] Attempting to connect to {self.host}:{self.port}...")
-        if self.socket.state() == QAbstractSocket.ConnectedState:
-             print("[ClientHandler] Already connected.")
-             return
-        self.buffer.clear()
-        self.socket.connectToHost(self.host, self.port)
-        # Результат будет обработан в on_connected или on_socket_error
+        if self.socket.state() != QAbstractSocket.ConnectedState:
+            print(f"[ClientHandler] Connecting to {self.host}:{self.port}")
+            self.buffer.clear()
+            self.socket.connectToHost(self.host, self.port)
 
     def disconnect_from_server(self):
-        print("[ClientHandler] Disconnecting...")
-        self.socket.abort() # Или disconnectFromHost()
+        self.socket.abort()
 
-    def send_command(self, command_data):
-        """Отправляет команду (словарь Python) на сервер в виде JSON."""
-        if self.socket.state() == QAbstractSocket.ConnectedState:
-            try:
-                json_string = json.dumps(command_data)
-                print(f"[ClientHandler] Sending JSON: {json_string}")
-                # Добавляем \n и кодируем в байты
-                self.socket.write((json_string + "\n").encode('utf-8'))
-                # flush() обычно не требуется для сокетов в Qt
-            except Exception as e:
-                error_msg = f"Error encoding/sending command: {e}"
-                print(f"[ClientHandler] {error_msg}")
-                self.error_occurred.emit(error_msg)
-        else:
-            error_msg = "Cannot send command: Not connected."
-            print(f"[ClientHandler] {error_msg}")
-            self.error_occurred.emit(error_msg) # Уведомляем об ошибке
+    # ===== outgoing =====
+    _CMD2EVENT = {
+        # «GUI-команда»  →  «event, который понимает C++-сервер»
+        "register":      "register",
+        "login":         "login",
+        "send_message":  "message",
+        "add_task":      "add_task",
+        "list_tasks":    "list_tasks",
+    }
 
-    # --- Слоты для сигналов QTcpSocket ---
-
-    def on_connected(self):
-        print("[ClientHandler] Connected successfully.")
-        self._is_connected = True
-        self.connected.emit()
-        self.connection_status.emit(True) # Отправляем конкретный сигнал
-
-    def on_disconnected(self):
-        print("[ClientHandler] Disconnected from server.")
-        self._is_connected = False
-        self.disconnected.emit()
-        self.connection_status.emit(False)
-        # TODO: Попытка переподключения?
-
-    def on_ready_read(self):
-        """Читает данные из сокета, буферизует и парсит полные JSON строки."""
-        self.buffer.append(self.socket.readAll())
-
-        while b'\n' in self.buffer:
-            newline_pos = self.buffer.indexOf(b'\n')
-            json_bytes = self.buffer.left(newline_pos)
-            self.buffer = self.buffer.mid(newline_pos + 1) # Удаляем обработанные данные + \n
-
-            if json_bytes.isEmpty():
-                continue
-
-            try:
-                json_str = json_bytes.data().decode('utf-8').strip()
-                # print(f"[ClientHandler] Received JSON line: {json_str}") # Отладка
-                response = json.loads(json_str)
-                self.process_server_response(response) # Обрабатываем ответ
-            except json.JSONDecodeError as e:
-                 error_msg = f"Failed to parse JSON: {e} - [{json_bytes.data().decode('utf-8', errors='ignore')}]"
-                 print(f"[ClientHandler] {error_msg}")
-                 self.error_occurred.emit(error_msg)
-            except Exception as e:
-                 error_msg = f"Error processing received data: {e}"
-                 print(f"[ClientHandler] {error_msg}")
-                 self.error_occurred.emit(error_msg)
-
-    def on_socket_error(self, socket_error):
-        """Обрабатывает ошибки сокета."""
-        error_msg = f"Socket Error: {self.socket.errorString()} (Code: {socket_error})"
-        print(f"[ClientHandler] {error_msg}")
-        # Закрываем сокет при ошибке
-        # self.socket.abort() # Может вызвать on_disconnected
-        # Уведомляем MainWindow
-        self.error_occurred.emit(error_msg)
-        # Если была попытка подключения, считаем ее неудавшейся
-        if self.socket.state() != QAbstractSocket.ConnectedState and not self._is_connected:
-             self.connection_status.emit(False)
-             # TODO: Попытка переподключения?
-
-    def process_server_response(self, response):
-        """Парсит ответ сервера и эмитирует соответствующие сигналы."""
-        response_type = response.get("type") # Используем .get для безопасности
-        if not response_type:
-            print("[ClientHandler] Received JSON from server without 'type' field.")
-            self.error_occurred.emit("Received invalid JSON from server (missing 'type')")
+    def _send_json(self, data: dict):
+        if self.socket.state() != QAbstractSocket.ConnectedState:
+            self.error_occurred.emit("Cannot send: not connected")
             return
 
-        # Эмитируем общий сигнал
-        self.server_response.emit(response)
+        cmd = data.get("command")
+        if "event" not in data:
+            data["event"] = self._CMD2EVENT.get(cmd, cmd)
 
-        # Эмитируем конкретные сигналы
-        # (MainWindow может слушать либо общий, либо конкретные)
-        if response_type == "register_result":
-            self.register_result.emit(response.get("success", False), response.get("message", ""))
-        elif response_type == "login_result":
-             self.login_result.emit(response.get("success", False), response.get("message", ""))
-        elif response_type == "message":
-             # Предполагаем, что main_tcp_client добавляет поле 'to'
-             self.message_received.emit(response.get("from", ""), response.get("to", ""), response.get("text", ""))
-        elif response_type == "server_error":
-             self.server_error.emit(response.get("message", "Unknown server error"))
-        elif response_type == "connection_status":
-             # Этот тип обычно не приходит от сервера, но обрабатываем на всякий случай
-             self.connection_status.emit(response.get("connected", False))
-        # TODO: Добавить обработку task_list_result, task_notification и т.д.
-        else:
-            print(f"[ClientHandler] Received unhandled response type: {response_type}")
+        try:
+            payload = json.dumps(data, ensure_ascii=False) + "\n"
+            self.socket.write(payload.encode("utf-8"))
+            print("[ClientHandler] →", payload.rstrip())
+        except Exception as e:
+            self.error_occurred.emit(f"Send failed: {e}")
 
-    # --- Публичные методы для вызова из MainWindow ---
-    def send_register_command(self, username, password):
-        self.send_command({
-            "command": "register",
-            "username": username,
-            "password": password # TODO: TLS!
-        })
+    # удобные обёртки --------------------------------------------------------
+    def send_register_command(self, user, pwd):
+        self._send_json({"command": "register", "username": user, "password": pwd})
 
-    def send_login_command(self, username, password):
-        self.send_command({
-            "command": "login",
-            "username": username,
-            "password": password # TODO: TLS!
-        })
+    def send_login_command(self, user, pwd):
+        self._send_json({"command": "login", "username": user, "password": pwd})
 
-    def send_message_command(self, recipient, text):
-        self.send_command({
-            "command": "send_message",
-            "to": recipient,
-            "text": text
-        })
-    # TODO: Добавить методы send_add_task, send_list_tasks и т.д.
+    def send_message_command(self, to, text):
+        # command == send_message, event будет автоматически подменён на "message"
+        self._send_json({"command": "send_message", "to": to, "text": text})
+
+    # ===== socket callbacks =====
+    def _on_connected(self):
+        self._online = True
+        self.connected.emit()
+        self.connection_status.emit(True)
+
+    def _on_disconnected(self):
+        self._online = False
+        self.disconnected.emit()
+        self.connection_status.emit(False)
+
+    def _on_socket_error(self, code):
+        msg = f"Socket error: {self.socket.errorString()} (code {code})"
+        print("[ClientHandler]", msg)
+        self.error_occurred.emit(msg)
+        if not self._online:
+            self.connection_status.emit(False)
+
+    # ===== incoming data =====
+    def _on_ready_read(self):
+        self.buffer.append(self.socket.readAll())
+        while b"\n" in self.buffer:
+            nl = self.buffer.indexOf(b"\n")
+            raw = bytes(self.buffer[:nl]).decode("utf-8").strip()
+            self.buffer = self.buffer.mid(nl + 1)
+            if not raw:
+                continue
+            try:
+                self._route_response(json.loads(raw))
+            except json.JSONDecodeError as e:
+                self.error_occurred.emit(f"Bad JSON: {e} – [{raw}]")
+
+    # ===== routing =====
+    _EVENT2TYPE = {
+        "register_success":  "register_result",
+        "login_success":     "login_result",
+        "message":           "message",
+        "task_list":         "task_list_result",
+        "task_notification": "task_notification",
+        "status":            "server_status",
+        "error":             "server_error",
+    }
+
+    def _route_response(self, r: dict):
+        # превращаем server.event → type
+        if "type" not in r and "event" in r:
+            ev = r["event"]
+            if ev in ("register_success", "login_success"):
+                r.setdefault("success", True)
+                r.setdefault("message", "")
+            elif ev == "error":
+                r.setdefault("message", r.get("text", "unknown error"))
+            r["type"] = self._EVENT2TYPE.get(ev, ev)
+
+        rtype = r.get("type")
+        if not rtype:
+            self.error_occurred.emit("Server JSON without 'type'")
+            return
+
+        self.server_response.emit(r)            # общий сигнал
+
+        # «узкие» сигналы
+        if   rtype == "register_result":
+            self.register_result.emit(r.get("success", False), r.get("message", ""))
+        elif rtype == "login_result":
+            self.login_result.emit(r.get("success", False),   r.get("message", ""))
+        elif rtype == "message":
+            self.message_received.emit(r.get("from",""),
+                                       r.get("to",""),
+                                       r.get("text",""))
+        elif rtype == "server_error":
+            self.server_error.emit(r.get("message", ""))
+        elif rtype == "connection_status":
+            self.connection_status.emit(r.get("connected", False))
+        # task_list_result / task_notification можно добавить аналогично

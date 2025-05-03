@@ -1,5 +1,5 @@
-import sys
-import os
+#main_window.py
+import sys, os
 import json # Импортируем для работы с JSON командами
 
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QMessageBox, QStyle,
@@ -44,14 +44,23 @@ except ImportError:
 
 
 # --- Константы ---
-UI_FILE = "mainwindow.ui" # Убедитесь, что этот файл в том же каталоге
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ICON_SEND_PATH = os.path.join(BASE_DIR, "icons", "send_icon.png") # Путь к иконке отправки
+if getattr(sys, 'frozen', False):      # PyInstaller-onefile
+    BASE_DIR = sys._MEIPASS
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+UI_FILE        = os.path.join(BASE_DIR, "mainwindow.ui")
+ICON_SEND_PATH = os.path.join(BASE_DIR, "icons", "send_icon.png")
 
 # --- Основной класс окна ---
 class MainWindow(QMainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, host=None, port=None, parent=None):
         super().__init__(parent)
+
+        # сохраните адрес-порта, пришедшие извне:
+        from client_handler import DEFAULT_HOST, DEFAULT_PORT
+        self.server_host = host or DEFAULT_HOST
+        self.server_port = int(port or DEFAULT_PORT)
 
         # --- Загрузка UI ---
         try:
@@ -88,7 +97,7 @@ class MainWindow(QMainWindow):
 
         # --- Настройка и запуск сетевого клиента ---
         # TODO: Замените на реальный IP и порт вашего сервера VDS
-        self.server_host = "212.67.17.60" # Пример IP (ЗАМЕНИТЬ!)
+        self.server_host = "127.0.0.1" # Пример IP (ЗАМЕНИТЬ!)
         self.server_port = 8080           # Пример порта
         self.setup_client_handler()
 
@@ -119,7 +128,6 @@ class MainWindow(QMainWindow):
 
         # --- Начальное состояние интерфейса ---
         self.set_initial_ui_state()
-        self.populate_contacts() # Заполняем демо-контактами
 
         self.log_to_statusbar("Интерфейс загружен. Попытка подключения...")
 
@@ -174,15 +182,34 @@ class MainWindow(QMainWindow):
         self.client_handler.connect_to_server() # Запускаем подключение
 
     def populate_contacts(self):
-        """Заполняет список контактов."""
-        # TODO: Заменить на реальную загрузку контактов после логина
-        if not hasattr(self, 'contactListWidget'): return
+        """Читает всех юзеров из messenger.db и заполняет QListWidget.
+        Сам текущий пользователь (если уже известен) игнорируется."""
+        if not hasattr(self, "contactListWidget"):
+            return
+
+        import sqlite3
+        DB_PATH = "/Users/administrator/ClSrvrvMessager-2-dev2/src/app/messenger.db"
+
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                conn.row_factory = lambda cur, row: row[0]          # получаем сразу строки-юзеры
+                users = conn.execute("SELECT username FROM users "
+                                     "ORDER BY username COLLATE NOCASE;").fetchall()
+        except Exception as e:
+            print(f"[Contacts] БД: {e}")
+            users = []
+
+        my_name = self.current_username          # может быть None до логина
         self.contactListWidget.clear()
-        contacts = ["gagaga", "user1", "Другой Тест"] # Пример
-        for name in contacts:
-            item = QListWidgetItem(name)
-            # item.setIcon(...) # Можно добавить иконки
-            self.contactListWidget.addItem(item)
+        for name in users:
+            if name != my_name:                  # убираем себя
+                self.contactListWidget.addItem(QListWidgetItem(name))
+
+        # до выбора контакта поля ввода/кнопка должны быть недоступны
+        if hasattr(self, "messageInput"):
+            self.messageInput.setEnabled(False)
+        if hasattr(self, "sendButton"):
+            self.sendButton.setEnabled(False)
 
     # --- Слоты для сигналов GUI ---
 
@@ -330,11 +357,13 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Вход выполнен", f"Добро пожаловать, {self.current_username}!")
             self.mainStackedWidget.setCurrentIndex(1) # Переключаемся на чат
             self.log_to_statusbar(f"Вход как {self.current_username} выполнен.")
+            self.populate_contacts()
             # Очистка полей ввода и деактивация до выбора контакта
             if hasattr(self, 'messageInput'): self.messageInput.setEnabled(False)
             if hasattr(self, 'sendButton'): self.sendButton.setEnabled(False)
             if hasattr(self, 'chatHeaderLabel'): self.chatHeaderLabel.setText("Выберите контакт")
             if hasattr(self, 'chatDisplay'): self.chatDisplay.clear()
+            
             # TODO: Запросить список контактов у сервера здесь
             # self.client_handler.send_request_contacts()
         else:

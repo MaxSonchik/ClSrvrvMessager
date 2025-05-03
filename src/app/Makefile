@@ -1,6 +1,7 @@
 # -----------------------------------------------------------------------------
 # Compiler and flags
 # -----------------------------------------------------------------------------
+GUI_DIR := ../GUI 
 CXX        := g++
 CXXFLAGS   := -std=c++17 -pthread -Wall -Wextra -g -O2 \
                -I./src \
@@ -14,9 +15,9 @@ CXXFLAGS   := -std=c++17 -pthread -Wall -Wextra -g -O2 \
 # Linker flags and libraries
 # -----------------------------------------------------------------------------
 LDFLAGS    := -L/opt/homebrew/lib -L/opt/local/lib -L/usr/local/lib
-LIBS_SERVER := -lboost_system -lprometheus-cpp-pull -lprometheus-cpp-core \
+LIBS_SERVER := -lboost_system-mt -lprometheus-cpp-pull -lprometheus-cpp-core \
                -lpthread -lsqlite3 -largon2 -lstdc++ -lm
-LIBS_CLIENT := -lboost_system -lpthread -lstdc++
+LIBS_CLIENT := -lboost_system-mt -lpthread -lstdc++
 
 # -----------------------------------------------------------------------------
 # Source file groups
@@ -125,3 +126,15 @@ iwyu: compile_commands
 	@touch iwyu_mappings.imp
 	iwyu_tool.py -p . --mapping_file=iwyu_mappings.imp -j $(nproc) \
 	  || echo "iwyu finished with recommendations or errors."
+
+.PHONY: gui
+gui:
+	$(MAKE) -C $(GUI_DIR) build_gui
+
+# GUI/Makefile  (очень короткий)
+.PHONY: build_gui
+build_gui:
+	./build_gui.sh
+
+.PHONY: package
+package: all gui         # all = C++ сервер/клиент, gui = бинарник GUI

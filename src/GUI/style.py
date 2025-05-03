@@ -1,4 +1,4 @@
-# --- START OF FILE style.py ---
+#style.py
 
 # Темная тема для PyQt5
 DARK_BACKGROUND = "#1e1e1e"
