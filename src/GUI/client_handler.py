@@ -11,7 +11,7 @@ import json
 from PyQt5.QtCore    import QObject, pyqtSignal, QByteArray
 from PyQt5.QtNetwork import QTcpSocket, QAbstractSocket
 
-DEFAULT_HOST = "127.0.0.1"
+DEFAULT_HOST = "212.67.17.60"
 DEFAULT_PORT = 8080
 
 
