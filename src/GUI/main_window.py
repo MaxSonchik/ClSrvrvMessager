@@ -99,7 +99,7 @@ class MainWindow(QMainWindow):
 
         # --- Настройка и запуск сетевого клиента ---
         # TODO: Замените на реальный IP и порт вашего сервера VDS
-        self.server_host = "127.0.0.1" # Пример IP (ЗАМЕНИТЬ!)
+        self.server_host = "212.67.17.60"
         self.server_port = 8080           # Пример порта
         self.setup_client_handler()
 
@@ -369,7 +369,7 @@ class MainWindow(QMainWindow):
             if hasattr(self, 'sendButton'): self.sendButton.setEnabled(False)
             if hasattr(self, 'chatHeaderLabel'): self.chatHeaderLabel.setText("Выберите контакт")
             if hasattr(self, 'chatDisplay'): self.chatDisplay.clear()
-            
+
             # TODO: Запросить список контактов у сервера здесь
             # self.client_handler.send_request_contacts()
         else:
