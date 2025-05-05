@@ -76,7 +76,8 @@ $(CLIENT_TARGET): $(OBJS_COMMON) $(OBJS_MAIN_TCP_CLIENT) \
 clean:
 	@echo "Cleaning build artifacts…"
 	@rm -f $(TARGETS)
-	@rm -f *.o
+	@rm -f *.o                     # корень проекта
+	@rm -f src/*.o                 #  <--  добавили эту строку
 	@rm -f src/common/*.o src/database/*.o src/tcp/*.o
 
 # -----------------------------------------------------------------------------
