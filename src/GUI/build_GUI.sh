@@ -2,7 +2,6 @@
 sudo apt update&& sudo apt upgrade
 sudo apt install libboost-all-dev \
 nlohmann-json3-dev \
-libprometheus-cpp-dev \
 build-essential \
 libsqlite3-dev \
 libargon2-dev \
