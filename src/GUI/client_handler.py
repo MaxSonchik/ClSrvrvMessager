@@ -1,17 +1,20 @@
-# client_handler.py
 """
 Qt-обёртка над TCP-протоколом мессенджера.
 
-- при отправке автоматически добавляет поле `event`
-  (сервер роутит сообщения именно по event);
-- преобразует ответы сервера с `event` в старую схему
-  с `type`, чтобы остальной GUI не менять.
+▪ При отправке автоматически подставляет поле `event`
+  (сервер роутит сообщения именно по event).
+
+▪ Ответы сервера с `event` преобразует в привычную для старого GUI
+  схему с `type`, чтобы не переписывать остальной интерфейс.
+
+▪ Новое: поддержка единых пользователей на сервере
+  – клиент умеет послать `get_users` и получить `users_list`.
 """
 import json
-from PyQt5.QtCore    import QObject, pyqtSignal, QByteArray
+from PyQt5.QtCore    import QObject, pyqtSignal, QByteArray, QTimer
 from PyQt5.QtNetwork import QTcpSocket, QAbstractSocket
 
-DEFAULT_HOST = "212.67.17.60"
+DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8080
 
 
@@ -26,6 +29,7 @@ class ClientHandler(QObject):
     connection_status = pyqtSignal(bool)
     login_result      = pyqtSignal(bool, str)
     register_result   = pyqtSignal(bool, str)
+    users_updated     = pyqtSignal(list)          # ← список пользователей [{id,name},…]
     message_received  = pyqtSignal(str, str, str)
     server_error      = pyqtSignal(str)
     # ─────────────────────────────────────
@@ -46,8 +50,18 @@ class ClientHandler(QObject):
         self.socket.readyRead.connect(self._on_ready_read)
         self.socket.errorOccurred.connect(self._on_socket_error)
 
-    # ===== public helpers =====
-    def connect_to_server(self):
+        # данные для авто-регистрации / логина
+        self._pending_credentials = None   # (username, password)
+
+    # ===== public helpers ====================================================
+    def connect_to_server(self, username: str = None, password: str = None):
+        """
+        Можно вызвать с login-данными; тогда сразу после connect
+        клиент выполнит register→login→get_users.
+        """
+        if username and password:
+            self._pending_credentials = (username, password)
+
         if self.socket.state() != QAbstractSocket.ConnectedState:
             print(f"[ClientHandler] Connecting to {self.host}:{self.port}")
             self.buffer.clear()
@@ -56,7 +70,7 @@ class ClientHandler(QObject):
     def disconnect_from_server(self):
         self.socket.abort()
 
-    # ===== outgoing =====
+    # ===== outgoing ==========================================================
     _CMD2EVENT = {
         # «GUI-команда»  →  «event, который понимает C++-сервер»
         "register":      "register",
@@ -64,6 +78,7 @@ class ClientHandler(QObject):
         "send_message":  "message",
         "add_task":      "add_task",
         "list_tasks":    "list_tasks",
+        "get_users":     "get_users",       # ← новое
     }
 
     def _send_json(self, data: dict):
@@ -82,7 +97,7 @@ class ClientHandler(QObject):
         except Exception as e:
             self.error_occurred.emit(f"Send failed: {e}")
 
-    # удобные обёртки --------------------------------------------------------
+    # удобные обёртки ----------------------------------------------------------
     def send_register_command(self, user, pwd):
         self._send_json({"command": "register", "username": user, "password": pwd})
 
@@ -90,14 +105,23 @@ class ClientHandler(QObject):
         self._send_json({"command": "login", "username": user, "password": pwd})
 
     def send_message_command(self, to, text):
-        # command == send_message, event будет автоматически подменён на "message"
         self._send_json({"command": "send_message", "to": to, "text": text})
 
-    # ===== socket callbacks =====
+    def request_users_list(self):
+        self._send_json({"command": "get_users"})
+
+    # ===== socket callbacks ===================================================
     def _on_connected(self):
         self._online = True
         self.connected.emit()
         self.connection_status.emit(True)
+
+        # если были переданы креды – регистрируемся, потом логинимся
+        if self._pending_credentials:
+            user, pwd = self._pending_credentials
+            # пробуем register; если юзер уже есть – сервер вернёт error,
+            # GUI сможет попробовать login отдельно
+            self.send_register_command(user, pwd)
 
     def _on_disconnected(self):
         self._online = False
@@ -111,7 +135,7 @@ class ClientHandler(QObject):
         if not self._online:
             self.connection_status.emit(False)
 
-    # ===== incoming data =====
+    # ===== incoming data ======================================================
     def _on_ready_read(self):
         self.buffer.append(self.socket.readAll())
         while b"\n" in self.buffer:
@@ -125,10 +149,11 @@ class ClientHandler(QObject):
             except json.JSONDecodeError as e:
                 self.error_occurred.emit(f"Bad JSON: {e} – [{raw}]")
 
-    # ===== routing =====
+    # ===== routing ============================================================
     _EVENT2TYPE = {
         "register_success":  "register_result",
         "login_success":     "login_result",
+        "users_list":        "users_list",
         "message":           "message",
         "task_list":         "task_list_result",
         "task_notification": "task_notification",
@@ -154,17 +179,34 @@ class ClientHandler(QObject):
 
         self.server_response.emit(r)            # общий сигнал
 
-        # «узкие» сигналы
+        # «узкие» сигналы + автологика ---------------------------------------
         if   rtype == "register_result":
-            self.register_result.emit(r.get("success", False), r.get("message", ""))
+            ok = r.get("success", False)
+            self.register_result.emit(ok, r.get("message", ""))
+            if ok and self._pending_credentials:
+                # после успешной регистрации – логинимся
+                u, p = self._pending_credentials
+                self.send_login_command(u, p)
+
         elif rtype == "login_result":
-            self.login_result.emit(r.get("success", False),   r.get("message", ""))
+            ok = r.get("success", False)
+            self.login_result.emit(ok, r.get("message", ""))
+            if ok:
+                # после логина сразу просим список пользователей
+                self.request_users_list()
+
+        elif rtype == "users_list":
+            users = r.get("users", [])
+            self.users_updated.emit(users)
+
         elif rtype == "message":
             self.message_received.emit(r.get("from",""),
                                        r.get("to",""),
                                        r.get("text",""))
+
         elif rtype == "server_error":
             self.server_error.emit(r.get("message", ""))
+
         elif rtype == "connection_status":
             self.connection_status.emit(r.get("connected", False))
         # task_list_result / task_notification можно добавить аналогично

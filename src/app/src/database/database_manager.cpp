@@ -1,3 +1,4 @@
+//database_manager.cpp
 #include "database_manager.hpp"
 #include <argon2.h>
 #include <iostream>
@@ -84,6 +85,7 @@ bool DatabaseManager::verify_password(const std::string& password, const std::st
         return false; // Ошибка при проверке
     }
 }
+
 
 // Парсинг времени из "DD.MM.YYYY HH:MM" в ISO 8601 UTC
 /*static*/ std::optional<std::string> DatabaseManager::parse_user_time_to_iso(const std::string& user_time_str) {
@@ -750,5 +752,43 @@ int DatabaseManager::cleanup_inactive_tasks(int days_old) {
     return deleted_count;
 }
 
+int DatabaseManager::add_user(const std::string& username)
+{
+    static const char* sql = "INSERT INTO users (username) VALUES (?);";
 
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK)
+        return -1;
+
+    sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {        // имя занято → ошибка
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    sqlite3_finalize(stmt);
+    return static_cast<int>(sqlite3_last_insert_rowid(db_));
+}
+
+std::vector<DBUser> DatabaseManager::get_all_users()
+{
+    std::vector<DBUser> out;
+    const char* sql = "SELECT rowid, username FROM users ORDER BY rowid;";
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        std::cerr << "[DB] prepare get_all_users: " << sqlite3_errmsg(db_) << '\n';
+        return out;
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        DBUser u;
+        u.id   = sqlite3_column_int(stmt, 0);                         // rowid
+        u.name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        out.push_back(std::move(u));
+    }
+    sqlite3_finalize(stmt);
+    return out;
+}
 } // namespace tcp_messenger

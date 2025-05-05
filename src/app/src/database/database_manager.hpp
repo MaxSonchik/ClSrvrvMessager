@@ -1,3 +1,5 @@
+//database_manager.hpp
+
 #ifndef DATABASE_MANAGER_HPP
 #define DATABASE_MANAGER_HPP
 
@@ -26,6 +28,11 @@ struct Task {
     bool is_active;
 };
 
+struct DBUser {               //  ──► новая «DTO»
+    int id;
+    std::string name;
+};
+
 class DatabaseManager {
 public:
     explicit DatabaseManager(const std::string& db_path);
@@ -50,7 +57,9 @@ public:
                      const std::string& message_text,
                      const std::string& sender_ip_address);
 
-
+    
+    int add_user(const std::string& username);          // INSERT, вернёт id или −1
+    std::vector<DBUser> get_all_users();                // SELECT * FROM users
     // Добавляет новую задачу
     int add_task(const std::string& username, const std::string& task_name, const std::string& description,
                  const std::string& trigger_time_iso, int notify_offset_minutes);

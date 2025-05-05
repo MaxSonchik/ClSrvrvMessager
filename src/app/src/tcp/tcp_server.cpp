@@ -7,6 +7,7 @@
 #include <memory>
 #include <deque>
 #include <optional>
+#include <vector>     // для std::vector<...>
 
 namespace tcp_messenger {
 
@@ -363,6 +364,10 @@ void TCPServer::handle_message(const std::string& raw_message, std::shared_ptr<S
              session->send(common::error_event("Authentication required"));
              return;
         }
+        if (event == "get_users") {                 // ← новинка
+            handle_get_users(session);
+            return;
+        }
 
         // Проверяем, совпадает ли 'from' поле (если есть) с именем пользователя сессии
         if (data.contains("from") && data["from"] != session->get_username()) {
@@ -415,12 +420,12 @@ void TCPServer::handle_register(const json& data, std::shared_ptr<Session> sessi
     bool success = db_manager_.register_user(username, password, remote_addr.first, remote_addr.second);
 
     if (success) {
-         std::cout << "[" << get_log_timestamp() << "][Server] User '" << username << "' registered successfully." << std::endl;
-         session->send(common::base_event("register_success"));
-    } else {
-        std::cerr << "[" << get_log_timestamp() << "][Server] Registration failed for username '" << username << "'." << std::endl;
-        session->send(common::error_event("Registration failed (username might exist or DB error)"));
-    }
+        std::cout << "[" << get_log_timestamp() << "][Server] User '" << username << "' registered successfully." << std::endl;
+        session->send(common::base_event("register_success"));
+   } else {
+       std::cerr << "[" << get_log_timestamp() << "][Server] Registration failed for username '" << username << "'." << std::endl;
+       session->send(common::error_event("Registration failed (username might exist or DB error)"));
+   }
 }
 
 void TCPServer::handle_login(const json& data, std::shared_ptr<Session> session) {
@@ -546,6 +551,24 @@ void TCPServer::handle_message_event(const json& data, std::shared_ptr<Session> 
     }
 }
 
+void TCPServer::handle_get_users(std::shared_ptr<Session> session)
+{
+    try {
+        auto db_users = db_manager_.get_all_users();   // возвращает std::vector<DBUser>
+
+        std::vector<common::UserDTO> users;
+        users.reserve(db_users.size());
+        for (const auto& u : db_users)
+            users.push_back({u.id, u.name});
+
+        session->send(common::users_list_event(users));
+    }
+    catch (const std::exception& e) {
+        std::cerr << "[" << get_log_timestamp() << "][Server] DB error in get_users: "
+                  << e.what() << std::endl;
+        session->send(common::error_event("Database error while fetching users"));
+    }
+}
 
 void TCPServer::handle_add_task(const json& data, std::shared_ptr<Session> session) {
     const std::string username = session->get_username();

@@ -286,7 +286,6 @@ imported by:
  &#8226;   <a href="#inspect">inspect</a>
  &#8226;   <a href="#logging">logging</a>
  &#8226;   <a href="#selectors">selectors</a>
- &#8226;   <a href="#sqlite3.dbapi2">sqlite3.dbapi2</a>
  &#8226;   <a href="#traceback">traceback</a>
  &#8226;   <a href="#tracemalloc">tracemalloc</a>
  &#8226;   <a href="#typing">typing</a>
@@ -301,7 +300,8 @@ imported by:
   <a target="code" href="/opt/homebrew/lib/python3.13/site-packages/PyQt5/__init__.py" type="text/plain"><tt>PyQt5</tt></a>
 <span class="moduletype">Package</span>  <div class="import">
 imports:
-    <a href="#PyQt5.sip">PyQt5.sip</a>
+    <a href="#PyQt5.QtGui">PyQt5.QtGui</a>
+ &#8226;   <a href="#PyQt5.sip">PyQt5.sip</a>
  &#8226;   <a href="#PyQt5.uic">PyQt5.uic</a>
  &#8226;   <a href="#pkgutil">pkgutil</a>
 
@@ -354,7 +354,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#PyQt5.QtWidgets">PyQt5.QtWidgets</a>
+    <a href="#PyQt5">PyQt5</a>
+ &#8226;   <a href="#PyQt5.QtWidgets">PyQt5.QtWidgets</a>
  &#8226;   <a href="#PyQt5.uic.Loader.loader">PyQt5.uic.Loader.loader</a>
  &#8226;   <a href="#PyQt5.uic.Loader.qobjectcreator">PyQt5.uic.Loader.qobjectcreator</a>
  &#8226;   <a href="#main_window">main_window</a>
@@ -374,7 +375,6 @@ imports:
   <div class="import">
 imported by:
     <a href="#client_handler">client_handler</a>
- &#8226;   <a href="#main_window">main_window</a>
 
   </div>
 
@@ -876,7 +876,6 @@ imported by:
 <span class="moduletype">SourceModule</span>  <div class="import">
 imported by:
     <a href="#_colorize">_colorize</a>
- &#8226;   <a href="#codeop">codeop</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
  &#8226;   <a href="#importlib.metadata._meta">importlib.metadata._meta</a>
  &#8226;   <a href="#importlib.resources.readers">importlib.resources.readers</a>
@@ -1575,16 +1574,6 @@ imported by:
 </div>
 
 <div class="node">
-  <a name="_sqlite3"></a>
-  <tt>_sqlite3</tt> <span class="moduletype"><tt>/opt/homebrew/Cellar/python@3.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/lib-dynload/_sqlite3.cpython-313-darwin.so</tt></span>  <div class="import">
-imported by:
-    <a href="#sqlite3.dbapi2">sqlite3.dbapi2</a>
-
-  </div>
-
-</div>
-
-<div class="node">
   <a name="_sre"></a>
   <tt>_sre</tt> <span class="moduletype"><i>(builtin module)</i></span>  <div class="import">
 imports:
@@ -1865,14 +1854,12 @@ imports:
 imported by:
     <a href="#ast">ast</a>
  &#8226;   <a href="#calendar">calendar</a>
- &#8226;   <a href="#code">code</a>
  &#8226;   <a href="#dis">dis</a>
  &#8226;   <a href="#gzip">gzip</a>
  &#8226;   <a href="#inspect">inspect</a>
  &#8226;   <a href="#main.py">main.py</a>
  &#8226;   <a href="#py_compile">py_compile</a>
  &#8226;   <a href="#random">random</a>
- &#8226;   <a href="#sqlite3.__main__">sqlite3.__main__</a>
  &#8226;   <a href="#tarfile">tarfile</a>
  &#8226;   <a href="#tokenize">tokenize</a>
  &#8226;   <a href="#zipfile">zipfile</a>
@@ -1995,7 +1982,6 @@ imported by:
   <tt>builtins</tt> <span class="moduletype"><i>(builtin module)</i></span>  <div class="import">
 imported by:
     <a href="#bz2">bz2</a>
- &#8226;   <a href="#code">code</a>
  &#8226;   <a href="#codecs">codecs</a>
  &#8226;   <a href="#enum">enum</a>
  &#8226;   <a href="#gettext">gettext</a>
@@ -2076,27 +2062,6 @@ imports:
 imported by:
     <a href="#main.py">main.py</a>
  &#8226;   <a href="#main_window">main_window</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="code"></a>
-  <a target="code" href="/opt/homebrew/Cellar/python%403.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/code.py" type="text/plain"><tt>code</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#argparse">argparse</a>
- &#8226;   <a href="#builtins">builtins</a>
- &#8226;   <a href="#codeop">codeop</a>
- &#8226;   <a href="#readline">readline</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#traceback">traceback</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#sqlite3.__main__">sqlite3.__main__</a>
 
   </div>
 
@@ -2242,23 +2207,6 @@ imported by:
  &#8226;   <a href="#pickle">pickle</a>
  &#8226;   <a href="#tokenize">tokenize</a>
  &#8226;   <a href="#xml.sax.saxutils">xml.sax.saxutils</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="codeop"></a>
-  <a target="code" href="/opt/homebrew/Cellar/python%403.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/codeop.py" type="text/plain"><tt>codeop</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#__future__">__future__</a>
- &#8226;   <a href="#warnings">warnings</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#code">code</a>
 
   </div>
 
@@ -2470,7 +2418,6 @@ imported by:
  &#8226;   <a href="#calendar">calendar</a>
  &#8226;   <a href="#email.utils">email.utils</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
- &#8226;   <a href="#sqlite3.dbapi2">sqlite3.dbapi2</a>
 
   </div>
 
@@ -6671,7 +6618,6 @@ imported by:
  &#8226;   <a href="#json.decoder">json.decoder</a>
  &#8226;   <a href="#json.encoder">json.encoder</a>
  &#8226;   <a href="#json.scanner">json.scanner</a>
- &#8226;   <a href="#main_window">main_window</a>
 
   </div>
 
@@ -6863,15 +6809,11 @@ imports:
     <a href="#PyQt5">PyQt5</a>
  &#8226;   <a href="#PyQt5.QtCore">PyQt5.QtCore</a>
  &#8226;   <a href="#PyQt5.QtGui">PyQt5.QtGui</a>
- &#8226;   <a href="#PyQt5.QtNetwork">PyQt5.QtNetwork</a>
  &#8226;   <a href="#PyQt5.QtWidgets">PyQt5.QtWidgets</a>
  &#8226;   <a href="#PyQt5.uic">PyQt5.uic</a>
  &#8226;   <a href="#client_handler">client_handler</a>
  &#8226;   <a href="#html">html</a>
- &#8226;   <a href="#json">json</a>
  &#8226;   <a href="#os">os</a>
- &#8226;   <a href="#pathlib">pathlib</a>
- &#8226;   <a href="#sqlite3">sqlite3</a>
  &#8226;   <a href="#style">style</a>
  &#8226;   <a href="#sys">sys</a>
 
@@ -7202,7 +7144,6 @@ imported by:
  &#8226;   <a href="#importlib.resources._common">importlib.resources._common</a>
  &#8226;   <a href="#importlib.resources.abc">importlib.resources.abc</a>
  &#8226;   <a href="#importlib.resources.readers">importlib.resources.readers</a>
- &#8226;   <a href="#main_window">main_window</a>
  &#8226;   <a href="#pathlib._abc">pathlib._abc</a>
  &#8226;   <a href="#pathlib._local">pathlib._local</a>
  &#8226;   <a href="#zipfile._path">zipfile._path</a>
@@ -7676,17 +7617,6 @@ imported by:
 </div>
 
 <div class="node">
-  <a name="readline"></a>
-  <tt>readline</tt> <span class="moduletype"><tt>/opt/homebrew/Cellar/python@3.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/lib-dynload/readline.cpython-313-darwin.so</tt></span>  <div class="import">
-imported by:
-    <a href="#code">code</a>
- &#8226;   <a href="#sqlite3.__main__">sqlite3.__main__</a>
-
-  </div>
-
-</div>
-
-<div class="node">
   <a name="reprlib"></a>
   <a target="code" href="/opt/homebrew/Cellar/python%403.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/reprlib.py" type="text/plain"><tt>reprlib</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
@@ -7824,88 +7754,6 @@ imported by:
  &#8226;   <a href="#http.client">http.client</a>
  &#8226;   <a href="#ssl">ssl</a>
  &#8226;   <a href="#urllib.request">urllib.request</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="sqlite3"></a>
-  <a target="code" href="/opt/homebrew/Cellar/python%403.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/sqlite3/__init__.py" type="text/plain"><tt>sqlite3</tt></a>
-<span class="moduletype">Package</span>  <div class="import">
-imports:
-    <a href="#sqlite3">sqlite3</a>
- &#8226;   <a href="#sqlite3.__main__">sqlite3.__main__</a>
- &#8226;   <a href="#sqlite3.dbapi2">sqlite3.dbapi2</a>
- &#8226;   <a href="#sqlite3.dump">sqlite3.dump</a>
- &#8226;   <a href="#warnings">warnings</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#main_window">main_window</a>
- &#8226;   <a href="#sqlite3">sqlite3</a>
- &#8226;   <a href="#sqlite3.__main__">sqlite3.__main__</a>
- &#8226;   <a href="#sqlite3.dbapi2">sqlite3.dbapi2</a>
- &#8226;   <a href="#sqlite3.dump">sqlite3.dump</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="sqlite3.__main__"></a>
-  <a target="code" href="/opt/homebrew/Cellar/python%403.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/sqlite3/__main__.py" type="text/plain"><tt>sqlite3.__main__</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#argparse">argparse</a>
- &#8226;   <a href="#code">code</a>
- &#8226;   <a href="#readline">readline</a>
- &#8226;   <a href="#sqlite3">sqlite3</a>
- &#8226;   <a href="#sys">sys</a>
- &#8226;   <a href="#textwrap">textwrap</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#sqlite3">sqlite3</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="sqlite3.dbapi2"></a>
-  <a target="code" href="/opt/homebrew/Cellar/python%403.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/sqlite3/dbapi2.py" type="text/plain"><tt>sqlite3.dbapi2</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#'collections.abc'">'collections.abc'</a>
- &#8226;   <a href="#_sqlite3">_sqlite3</a>
- &#8226;   <a href="#datetime">datetime</a>
- &#8226;   <a href="#sqlite3">sqlite3</a>
- &#8226;   <a href="#time">time</a>
- &#8226;   <a href="#warnings">warnings</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#sqlite3">sqlite3</a>
-
-  </div>
-
-</div>
-
-<div class="node">
-  <a name="sqlite3.dump"></a>
-  <a target="code" href="/opt/homebrew/Cellar/python%403.13/3.13.3/Frameworks/Python.framework/Versions/3.13/lib/python3.13/sqlite3/dump.py" type="text/plain"><tt>sqlite3.dump</tt></a>
-<span class="moduletype">SourceModule</span>  <div class="import">
-imports:
-    <a href="#sqlite3">sqlite3</a>
-
-  </div>
-  <div class="import">
-imported by:
-    <a href="#sqlite3">sqlite3</a>
 
   </div>
 
@@ -8176,7 +8024,6 @@ imported by:
  &#8226;   <a href="#ast">ast</a>
  &#8226;   <a href="#base64">base64</a>
  &#8226;   <a href="#calendar">calendar</a>
- &#8226;   <a href="#code">code</a>
  &#8226;   <a href="#codecs">codecs</a>
  &#8226;   <a href="#collections">collections</a>
  &#8226;   <a href="#contextlib">contextlib</a>
@@ -8226,7 +8073,6 @@ imported by:
  &#8226;   <a href="#selectors">selectors</a>
  &#8226;   <a href="#shutil">shutil</a>
  &#8226;   <a href="#socket">socket</a>
- &#8226;   <a href="#sqlite3.__main__">sqlite3.__main__</a>
  &#8226;   <a href="#ssl">ssl</a>
  &#8226;   <a href="#statistics">statistics</a>
  &#8226;   <a href="#subprocess">subprocess</a>
@@ -8336,7 +8182,6 @@ imported by:
     <a href="#argparse">argparse</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
  &#8226;   <a href="#importlib.metadata._adapters">importlib.metadata._adapters</a>
- &#8226;   <a href="#sqlite3.__main__">sqlite3.__main__</a>
  &#8226;   <a href="#traceback">traceback</a>
 
   </div>
@@ -8395,7 +8240,6 @@ imported by:
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
  &#8226;   <a href="#logging">logging</a>
  &#8226;   <a href="#random">random</a>
- &#8226;   <a href="#sqlite3.dbapi2">sqlite3.dbapi2</a>
  &#8226;   <a href="#ssl">ssl</a>
  &#8226;   <a href="#subprocess">subprocess</a>
  &#8226;   <a href="#tarfile">tarfile</a>
@@ -8468,8 +8312,7 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#code">code</a>
- &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
+    <a href="#http.cookiejar">http.cookiejar</a>
  &#8226;   <a href="#logging">logging</a>
  &#8226;   <a href="#main.py">main.py</a>
  &#8226;   <a href="#py_compile">py_compile</a>
@@ -8745,7 +8588,6 @@ imported by:
  &#8226;   <a href="#argparse">argparse</a>
  &#8226;   <a href="#ast">ast</a>
  &#8226;   <a href="#calendar">calendar</a>
- &#8226;   <a href="#codeop">codeop</a>
  &#8226;   <a href="#email.utils">email.utils</a>
  &#8226;   <a href="#enum">enum</a>
  &#8226;   <a href="#functools">functools</a>
@@ -8769,8 +8611,6 @@ imported by:
  &#8226;   <a href="#random">random</a>
  &#8226;   <a href="#re">re</a>
  &#8226;   <a href="#re._parser">re._parser</a>
- &#8226;   <a href="#sqlite3">sqlite3</a>
- &#8226;   <a href="#sqlite3.dbapi2">sqlite3.dbapi2</a>
  &#8226;   <a href="#sre_compile">sre_compile</a>
  &#8226;   <a href="#sre_constants">sre_constants</a>
  &#8226;   <a href="#sre_parse">sre_parse</a>

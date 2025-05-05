@@ -18,6 +18,7 @@
 #include <iomanip>
 #include <sstream>
 #include <optional> // Для std::optional
+#include <vector>            // для списка пользователей
 
 #include <prometheus/exposer.h>
 #include <prometheus/registry.h>
@@ -72,6 +73,7 @@ public:
     private:
         void do_read();
         void do_write(); // Добавим очередь записи для надежности
+        
 
         TCPServer& server_;
         tcp::socket socket_;
@@ -104,6 +106,7 @@ private:
     void handle_register(const json& data, std::shared_ptr<Session> session);
     void handle_login(const json& data, std::shared_ptr<Session> session);
     void handle_message_event(const json& data, std::shared_ptr<Session> session);
+    void handle_get_users(std::shared_ptr<Session> session);   // ← новинка
     void handle_add_task(const json& data, std::shared_ptr<Session> session);
     void handle_list_tasks(const json& data, std::shared_ptr<Session> session);
     // TODO: Добавить обработчики для передачи файлов: file_offer, file_accept, file_data и т.д.
