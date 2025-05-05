@@ -15,7 +15,7 @@ import json
 from PyQt5.QtCore    import QObject, pyqtSignal, QByteArray, QTimer
 from PyQt5.QtNetwork import QTcpSocket, QAbstractSocket
 
-DEFAULT_HOST = "127.0.0.1"
+DEFAULT_HOST = "212.67.17.60"
 DEFAULT_PORT = 8080
 
 
@@ -113,7 +113,7 @@ class ClientHandler(QObject):
 
     def request_users_list(self):
         self._send_json({"command": "get_users"})
-    
+
     def request_history(self, peer):
         self._send_json({"command": "get_history", "with": peer})
 
