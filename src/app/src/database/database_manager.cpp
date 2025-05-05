@@ -791,4 +791,32 @@ std::vector<DBUser> DatabaseManager::get_all_users()
     sqlite3_finalize(stmt);
     return out;
 }
+std::vector<MessageRow> DatabaseManager::get_conversation(const std::string& a, const std::string& b)
+{
+static const char* sql =
+"SELECT sender_username, recipient_username, message_text, timestamp "
+"FROM messages "
+"WHERE (sender_username=? AND recipient_username=?) "
+"   OR (sender_username=? AND recipient_username=?) "
+"ORDER BY timestamp ASC;";
+
+std::vector<MessageRow> out;
+std::lock_guard<std::mutex> lock(db_mutex_);
+
+SQLiteStatement stmt(db_, sql);
+sqlite3_bind_text(stmt.get(), 1, a.c_str(), -1, SQLITE_STATIC);
+sqlite3_bind_text(stmt.get(), 2, b.c_str(), -1, SQLITE_STATIC);
+sqlite3_bind_text(stmt.get(), 3, b.c_str(), -1, SQLITE_STATIC);
+sqlite3_bind_text(stmt.get(), 4, a.c_str(), -1, SQLITE_STATIC);
+
+while (sqlite3_step(stmt.get()) == SQLITE_ROW) {
+MessageRow row;
+row.from  = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(),0));
+row.to    = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(),1));
+row.text  = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(),2));
+row.ts_iso= reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(),3));
+out.push_back(std::move(row));
+}
+return out;
+}
 } // namespace tcp_messenger

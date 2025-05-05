@@ -97,8 +97,8 @@ class MainWindow(QMainWindow):
         ch.message_received.connect(self.process_message_received)
         ch.server_error.connect(self.process_server_error_message)
         ch.users_updated.connect(self.update_contacts_from_server)
-
         ch.connect_to_server()                     # без автологина
+        ch.history_received.connect(self.populate_history)
 
     # ---------- работа с контактами ----------
     @pyqtSlot(list)
@@ -150,26 +150,38 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(QListWidgetItem, QListWidgetItem)
     def handle_contact_selected(self, cur, prev):
-        if cur:
+        """Выбор контакта в списке."""
+        if cur:                                                    # выбран новый элемент
             name = cur.text()
-            if name == self.current_username:
+            if name == self.current_username:                      # запрет «чата с собой»
                 QMessageBox.information(self, "Чат с собой",
                                         "Нельзя открыть чат с самим собой.")
                 self.contactListWidget.setCurrentItem(prev)
                 return
+
+            # ——— активируем чат ———
             self.current_chat_target = name
             self.chatHeaderLabel.setText(name)
-            self.chatDisplay.clear()
-            self.chatDisplay.append(f"<i>--- Чат с {name} ---</i>")
+
+            self.chatDisplay.clear()                               # очистим, наполним историей
+            self.client_handler.request_history(name)              # ← запрос истории у сервера
+
             self.messageInput.setEnabled(True)
             self.sendButton.setEnabled(True)
             self.messageInput.setFocus()
-        else:
+
+        else:                                                      # снято выделение
             self.current_chat_target = None
             self.chatHeaderLabel.setText("Выберите контакт")
             self.chatDisplay.clear()
             self.messageInput.setEnabled(False)
             self.sendButton.setEnabled(False)
+
+    @pyqtSlot(list)
+    def populate_history(self, msgs):
+        self.chatDisplay.clear()
+        for m in msgs:
+            self.display_message(m["from"], m["text"])
 
     # ---------- ClientHandler слоты ----------
     @pyqtSlot()

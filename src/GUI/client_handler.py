@@ -1,3 +1,4 @@
+#client_handler.py
 """
 Qt-обёртка над TCP-протоколом мессенджера.
 
@@ -32,6 +33,7 @@ class ClientHandler(QObject):
     users_updated     = pyqtSignal(list)          # ← список пользователей [{id,name},…]
     message_received  = pyqtSignal(str, str, str)
     server_error      = pyqtSignal(str)
+    history_received = pyqtSignal(list)        # список dict
     # ─────────────────────────────────────
 
     # ------------------------------------------------------------------
@@ -81,6 +83,8 @@ class ClientHandler(QObject):
         "get_users":     "get_users",       # ← новое
     }
 
+    _CMD2EVENT["get_history"] = "get_history"
+
     def _send_json(self, data: dict):
         if self.socket.state() != QAbstractSocket.ConnectedState:
             self.error_occurred.emit("Cannot send: not connected")
@@ -109,6 +113,9 @@ class ClientHandler(QObject):
 
     def request_users_list(self):
         self._send_json({"command": "get_users"})
+    
+    def request_history(self, peer):
+        self._send_json({"command": "get_history", "with": peer})
 
     # ===== socket callbacks ===================================================
     def _on_connected(self):
@@ -159,6 +166,7 @@ class ClientHandler(QObject):
         "task_notification": "task_notification",
         "status":            "server_status",
         "error":             "server_error",
+        "history": "history",
     }
 
     def _route_response(self, r: dict):
@@ -209,4 +217,6 @@ class ClientHandler(QObject):
 
         elif rtype == "connection_status":
             self.connection_status.emit(r.get("connected", False))
+        elif rtype == "history":
+            self.history_received.emit(r.get("messages", []))
         # task_list_result / task_notification можно добавить аналогично

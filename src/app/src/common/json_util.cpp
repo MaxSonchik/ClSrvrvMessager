@@ -1,4 +1,5 @@
 #include "common/json_util.h"
+#include "../database/database_manager.hpp"
 
 namespace common {
 
@@ -71,6 +72,18 @@ nlohmann::json users_list_event(const std::vector<UserDTO>& users)
     j["users"] = nlohmann::json::array();
     for (const auto& u : users)
         j["users"].push_back({ {"id", u.id}, {"name", u.name} });
+    return j;
+}
+
+nlohmann::json history_event(const std::vector<tcp_messenger::MessageRow>& rows)
+{
+    nlohmann::json j = common::base_event("history");
+    j["messages"] = nlohmann::json::array();
+    for (auto const& r : rows) {
+        j["messages"].push_back(
+            {{"from", r.from}, {"to", r.to},
+             {"text", r.text}, {"ts", r.ts_iso}});
+    }
     return j;
 }
 

@@ -107,6 +107,7 @@ private:
     void handle_login(const json& data, std::shared_ptr<Session> session);
     void handle_message_event(const json& data, std::shared_ptr<Session> session);
     void handle_get_users(std::shared_ptr<Session> session);   // ← новинка
+    void handle_get_history  (const json&, std::shared_ptr<Session>);
     void handle_add_task(const json& data, std::shared_ptr<Session> session);
     void handle_list_tasks(const json& data, std::shared_ptr<Session> session);
     // TODO: Добавить обработчики для передачи файлов: file_offer, file_accept, file_data и т.д.

@@ -368,6 +368,10 @@ void TCPServer::handle_message(const std::string& raw_message, std::shared_ptr<S
             handle_get_users(session);
             return;
         }
+        else if (event == "get_history") {
+            handle_get_history(data, session);
+            return;
+        }
 
         // Проверяем, совпадает ли 'from' поле (если есть) с именем пользователя сессии
         if (data.contains("from") && data["from"] != session->get_username()) {
@@ -656,6 +660,20 @@ void TCPServer::handle_list_tasks(const json& /*data*/, std::shared_ptr<Session>
     }
 
     session->send(response);
+}
+
+void TCPServer::handle_get_history(const json& data,
+    std::shared_ptr<Session> session)
+{
+if (!data.contains("with") || !data["with"].is_string()) {
+session->send(common::error_event("Field 'with' required"));
+return;
+}
+std::string peer = data["with"];
+std::string me   = session->get_username();
+
+auto rows = db_manager_.get_conversation(me, peer);
+session->send(common::history_event(rows));
 }
 
 // --- Удаление клиента ---

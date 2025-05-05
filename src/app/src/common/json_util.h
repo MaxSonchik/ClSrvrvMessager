@@ -3,6 +3,7 @@
 
 #include <string>
 #include <nlohmann/json.hpp> // Используем nlohmann/json
+#include "../database/database_manager.hpp"
 
 namespace common {
     //базовое событие
@@ -26,6 +27,7 @@ namespace common {
 
     //Уведомление
     nlohmann::json task_notification_event(const std::string& username, int task_id, const std::string& task_name, const std::string& description);
+    nlohmann::json history_event(const std::vector<tcp_messenger::MessageRow>& rows);
 
 } // namespace common
 

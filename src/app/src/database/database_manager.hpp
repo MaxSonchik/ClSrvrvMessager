@@ -33,6 +33,10 @@ struct DBUser {               //  ──► новая «DTO»
     std::string name;
 };
 
+struct MessageRow {
+    std::string from, to, text, ts_iso;
+};
+
 class DatabaseManager {
 public:
     explicit DatabaseManager(const std::string& db_path);
@@ -67,6 +71,7 @@ public:
     std::vector<Task> get_active_tasks(const std::string& username);
     // Получает все активные задачи (для загрузки планировщиком при старте)
     std::vector<Task> get_all_active_tasks();
+    std::vector<MessageRow> get_conversation(const std::string& a, const std::string& b);
     // Помечает задачу как неактивную (выполненную/удаленную)
     bool mark_task_inactive(int task_id);
     // Удаляет старые неактивные задачи (например, старше месяца)
