@@ -2,6 +2,7 @@
 main_window.py — главное окно десктоп-клиента ClsMess.
 
 • Список контактов формируется по событию users_list от сервера.
+• При выборе контакта автоматически запрашивается история диалога.
 • Локальная БД больше не читается.
 """
 
@@ -10,10 +11,10 @@ from PyQt5 import uic
 from PyQt5.QtCore    import Qt, pyqtSlot, QSize
 from PyQt5.QtGui     import QIcon
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QMessageBox,
-                             QListWidgetItem, QStyle)
+                             QListWidgetItem, QStyle, QLineEdit)
 
 from client_handler import ClientHandler, DEFAULT_HOST, DEFAULT_PORT
-from style          import get_stylesheet           # если style.py отсутствует — функция-заглушка уже есть
+from style          import get_stylesheet          # если style.py нет — заглушка внутри
 
 
 # ────────── ресурсы ──────────
@@ -44,7 +45,7 @@ class MainWindow(QMainWindow):
         self.statusBar = self.statusBar()
 
         self.chatHeaderLabel.setAlignment(Qt.AlignCenter)
-        self.passwordInput.setEchoMode(self.passwordInput.Password)
+        self.passwordInput.setEchoMode(QLineEdit.Password)
 
         # ---------- кнопки ----------
         self.loginButton.clicked.connect(self.handle_login)
@@ -97,8 +98,9 @@ class MainWindow(QMainWindow):
         ch.message_received.connect(self.process_message_received)
         ch.server_error.connect(self.process_server_error_message)
         ch.users_updated.connect(self.update_contacts_from_server)
-        ch.connect_to_server()                     # без автологина
         ch.history_received.connect(self.populate_history)
+
+        ch.connect_to_server()                     # без автологина
 
     # ---------- работа с контактами ----------
     @pyqtSlot(list)
@@ -179,6 +181,7 @@ class MainWindow(QMainWindow):
 
     @pyqtSlot(list)
     def populate_history(self, msgs):
+        """Отрисовывает историю чата, полученную от сервера."""
         self.chatDisplay.clear()
         for m in msgs:
             self.display_message(m["from"], m["text"])

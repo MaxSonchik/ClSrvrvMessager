@@ -426,6 +426,7 @@ void TCPServer::handle_register(const json& data, std::shared_ptr<Session> sessi
     if (success) {
         std::cout << "[" << get_log_timestamp() << "][Server] User '" << username << "' registered successfully." << std::endl;
         session->send(common::base_event("register_success"));
+        broadcast_users_list();
    } else {
        std::cerr << "[" << get_log_timestamp() << "][Server] Registration failed for username '" << username << "'." << std::endl;
        session->send(common::error_event("Registration failed (username might exist or DB error)"));
@@ -661,6 +662,21 @@ void TCPServer::handle_list_tasks(const json& /*data*/, std::shared_ptr<Session>
 
     session->send(response);
 }
+
+void TCPServer::broadcast_users_list()
+{
+    auto db_users = db_manager_.get_all_users();
+    std::vector<common::UserDTO> dto;
+    dto.reserve(db_users.size());
+    for (auto const& u : db_users) dto.push_back({u.id, u.name});
+
+    auto msg = common::users_list_event(dto);
+
+    std::lock_guard<std::mutex> lg(clients_mutex_);
+    for (auto& [name, sess] : clients_)         // рассылаем всем онлайн-пользователям
+        if (sess) sess->send(msg);
+}
+
 
 void TCPServer::handle_get_history(const json& data,
     std::shared_ptr<Session> session)

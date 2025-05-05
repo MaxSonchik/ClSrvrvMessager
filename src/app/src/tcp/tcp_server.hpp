@@ -102,7 +102,7 @@ private:
     void do_accept();
     void handle_message(const std::string& raw_message, std::shared_ptr<Session> session);
 
-
+    void broadcast_users_list();   // новый приватный метод
     void handle_register(const json& data, std::shared_ptr<Session> session);
     void handle_login(const json& data, std::shared_ptr<Session> session);
     void handle_message_event(const json& data, std::shared_ptr<Session> session);
@@ -115,7 +115,7 @@ private:
     // ...
 
     void remove_client(const std::string& username, std::shared_ptr<Session> session);
-
+    
     void load_and_schedule_tasks();
     void start_cleanup_timer();
     void perform_db_cleanup(const boost::system::error_code& ec);
