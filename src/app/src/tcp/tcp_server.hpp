@@ -18,6 +18,7 @@
 #include <iomanip>
 #include <sstream>
 #include <optional> // Для std::optional
+#include <vector>            // для списка пользователей
 
 #include <prometheus/exposer.h>
 #include <prometheus/registry.h>
@@ -72,6 +73,7 @@ public:
     private:
         void do_read();
         void do_write(); // Добавим очередь записи для надежности
+        
 
         TCPServer& server_;
         tcp::socket socket_;
@@ -100,10 +102,12 @@ private:
     void do_accept();
     void handle_message(const std::string& raw_message, std::shared_ptr<Session> session);
 
-
+    void broadcast_users_list();   // новый приватный метод
     void handle_register(const json& data, std::shared_ptr<Session> session);
     void handle_login(const json& data, std::shared_ptr<Session> session);
     void handle_message_event(const json& data, std::shared_ptr<Session> session);
+    void handle_get_users(std::shared_ptr<Session> session);   // ← новинка
+    void handle_get_history  (const json&, std::shared_ptr<Session>);
     void handle_add_task(const json& data, std::shared_ptr<Session> session);
     void handle_list_tasks(const json& data, std::shared_ptr<Session> session);
     // TODO: Добавить обработчики для передачи файлов: file_offer, file_accept, file_data и т.д.
@@ -111,7 +115,7 @@ private:
     // ...
 
     void remove_client(const std::string& username, std::shared_ptr<Session> session);
-
+    
     void load_and_schedule_tasks();
     void start_cleanup_timer();
     void perform_db_cleanup(const boost::system::error_code& ec);

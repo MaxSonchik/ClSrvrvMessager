@@ -1,3 +1,4 @@
+//database_manager.cpp
 #include "database_manager.hpp"
 #include <argon2.h>
 #include <iostream>
@@ -84,6 +85,7 @@ bool DatabaseManager::verify_password(const std::string& password, const std::st
         return false; // Ошибка при проверке
     }
 }
+
 
 // Парсинг времени из "DD.MM.YYYY HH:MM" в ISO 8601 UTC
 /*static*/ std::optional<std::string> DatabaseManager::parse_user_time_to_iso(const std::string& user_time_str) {
@@ -750,5 +752,71 @@ int DatabaseManager::cleanup_inactive_tasks(int days_old) {
     return deleted_count;
 }
 
+int DatabaseManager::add_user(const std::string& username)
+{
+    static const char* sql = "INSERT INTO users (username) VALUES (?);";
 
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK)
+        return -1;
+
+    sqlite3_bind_text(stmt, 1, username.c_str(), -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {        // имя занято → ошибка
+        sqlite3_finalize(stmt);
+        return -1;
+    }
+
+    sqlite3_finalize(stmt);
+    return static_cast<int>(sqlite3_last_insert_rowid(db_));
+}
+
+std::vector<DBUser> DatabaseManager::get_all_users()
+{
+    std::vector<DBUser> out;
+    const char* sql = "SELECT rowid, username FROM users ORDER BY rowid;";
+
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        std::cerr << "[DB] prepare get_all_users: " << sqlite3_errmsg(db_) << '\n';
+        return out;
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        DBUser u;
+        u.id   = sqlite3_column_int(stmt, 0);                         // rowid
+        u.name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        out.push_back(std::move(u));
+    }
+    sqlite3_finalize(stmt);
+    return out;
+}
+std::vector<MessageRow> DatabaseManager::get_conversation(const std::string& a, const std::string& b)
+{
+static const char* sql =
+"SELECT sender_username, recipient_username, message_text, timestamp "
+"FROM messages "
+"WHERE (sender_username=? AND recipient_username=?) "
+"   OR (sender_username=? AND recipient_username=?) "
+"ORDER BY timestamp ASC;";
+
+std::vector<MessageRow> out;
+std::lock_guard<std::mutex> lock(db_mutex_);
+
+SQLiteStatement stmt(db_, sql);
+sqlite3_bind_text(stmt.get(), 1, a.c_str(), -1, SQLITE_STATIC);
+sqlite3_bind_text(stmt.get(), 2, b.c_str(), -1, SQLITE_STATIC);
+sqlite3_bind_text(stmt.get(), 3, b.c_str(), -1, SQLITE_STATIC);
+sqlite3_bind_text(stmt.get(), 4, a.c_str(), -1, SQLITE_STATIC);
+
+while (sqlite3_step(stmt.get()) == SQLITE_ROW) {
+MessageRow row;
+row.from  = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(),0));
+row.to    = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(),1));
+row.text  = reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(),2));
+row.ts_iso= reinterpret_cast<const char*>(sqlite3_column_text(stmt.get(),3));
+out.push_back(std::move(row));
+}
+return out;
+}
 } // namespace tcp_messenger

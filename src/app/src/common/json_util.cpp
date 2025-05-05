@@ -1,4 +1,5 @@
 #include "common/json_util.h"
+#include "../database/database_manager.hpp"
 
 namespace common {
 
@@ -41,6 +42,48 @@ json task_notification_event(const std::string& username, int task_id, const std
     j["task_id"] = task_id;
     j["task_name"] = task_name;
     j["description"] = description;
+    return j;
+}
+
+// ---------- регистрация ----------
+nlohmann::json register_event(const std::string& username)
+{
+    auto j = base_event("register");
+    j["username"] = username;
+    return j;
+}
+
+nlohmann::json register_ok_event(int user_id)
+{
+    auto j = base_event("register_ok");
+    j["user_id"] = user_id;
+    return j;
+}
+
+// ---------- get_users / users_list ----------
+nlohmann::json get_users_event()
+{
+    return base_event("get_users");
+}
+
+nlohmann::json users_list_event(const std::vector<UserDTO>& users)
+{
+    auto j = base_event("users_list");
+    j["users"] = nlohmann::json::array();
+    for (const auto& u : users)
+        j["users"].push_back({ {"id", u.id}, {"name", u.name} });
+    return j;
+}
+
+nlohmann::json history_event(const std::vector<tcp_messenger::MessageRow>& rows)
+{
+    nlohmann::json j = common::base_event("history");
+    j["messages"] = nlohmann::json::array();
+    for (auto const& r : rows) {
+        j["messages"].push_back(
+            {{"from", r.from}, {"to", r.to},
+             {"text", r.text}, {"ts", r.ts_iso}});
+    }
     return j;
 }
 

@@ -1,3 +1,0 @@
-([('messenger_gui',
-   '/Users/administrator/ClSrvrvMessager-2-dev2/src/GUI/dist/messenger_gui',
-   'EXECUTABLE')],)
