@@ -5,6 +5,9 @@
         "main.py",
         "mainwindow.ui",
         "send_icon.png",
-        "icons/send_icon.png"
+        "icons/send_icon.png",
+        "scheduler_dialog.ui",
+        "scheduler_dialog.py",
+        "client_handler.py"
     ]
 }
