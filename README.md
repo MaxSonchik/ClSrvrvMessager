@@ -2,232 +2,281 @@
 <h1>⁺˚⋆｡°✩₊✩°｡⋆˚⁺ **ClSrvrvMessager** ⁺˚⋆｡°✩₊✩°｡⋆˚⁺</h1>
 </div>
 <div align="center">
-  <img src="pictures/hacker-hacker-man.gif" alt="Описание GIF" width="300">
+  <img src="pictures/hacker-hacker-man.gif" alt="Hacker GIF" width="300">
 </div>
 
-**ClSrvrvMessager**Проект представляет собой *простой мессенджер с клиент-серверной архитектурой*, написанный на C++ с использованием библиотеки Boost.Asio. Он включает:
-  - 🖥 Сервер, слушающий TCP-подключения от клиентов. Клиенты могут регистрироваться, отправлять и получать текстовые сообщения через сервер
-  - 👨🏻‍💻Клиент, который делает STUN-запрос для определения своего публичного IP/порта,подключается к серверу и регистрируется, передавая ему свой публичный адрес, отправляет и получает текстовые сообщения по TCP, для передачи файлов использует UDP с простейшим механизмом ACK каждого блока
+**ClSrvrvMessager** is a C++ based client-server messenger application utilizing Boost.Asio. Key components include:
+  - 🖥 **Server**: Listens for TCP connections, manages client registration, and relays text messages.
+  - 👨🏻‍💻 **Client**: Performs STUN requests to determine its public IP/port, registers with the server (providing its public address), and exchanges text messages via TCP. File transfers use UDP with a basic block acknowledgment mechanism.
+The project also incorporates a Python GUI for client interaction, Kubernetes deployment for scalability and container management, and an ML-based model for auto-scaling based on load.
 
 <details>
-<summary>Немного дополнительной информации</summary>
-  Структура проекта многофайловая, есть Makefile для сборки. Код учитывает базовые требования, такие как выравнивание STUN-пакетов по RFC 5389, сериализация/десериализация сообщений, обработка ошибок при сетевых операциях, а также логику асинхронного ввода-вывода с помощью Boost.Asio.
+<summary>Additional Information</summary>
+  The project has a multi-file structure and uses a Makefile for building. The code adheres to fundamental requirements such as STUN packet alignment (RFC 5389), message serialization/deserialization, network error handling, and asynchronous I/O logic with Boost.Asio.
 </details>
 
 ***
-### **📄 Содержание**
-1. Требования 
-2. Используемые технологии 
-3. Спецификации
-4. Основные возможности
-5. Cтруктура проекта
-5. Dockerfile 
-6. Результаты автоматического Boost тестирования
+### **📄 Table of Contents**
+1. Requirements
+2. Technologies Used
+3. Specifications
+4. Core Features
+5. Python GUI
+6. Project Structure
+7. Dockerization
+8. Kubernetes Deployment
+9. ML-based Auto-scaling
+10. Boost Test Results
 ***
 
-### <font color="FFCCCC">**✅ Требования**</font> 
-- Компилятор C++ <font color="FFE5CC"><u>с поддержкой C++17</u></font> или новее. Рекомендуется GCC 7+ или Clang 5+. 
-- Установленный <font color="FFE5CC"><u>Boost.Asio и Boost.System</u></font>
-- Системные инструменты для сборки(make или аналогичная утилита сборки)
-- Подключение к интернету (для <font color="FFE5CC">STUN</font>)
+### **✅ Requirements**
+- C++17 compatible compiler (GCC 7+ or Clang 5+ recommended).
+- Boost.Asio and Boost.System libraries installed.
+- Build tools (e.g., make).
+- Internet connection (for STUN functionality).
 ***
-### <font color="FFCCCC">**🌐 Используемые технологии**</font>  
-- Язык программирования: **C++17*
-- Библиотека Boost.Asio - для асинхронного сетевого ввода-вывода (TCP и UDP)
-- Boost.System - для обработки системных ошибок и взаимодействия с Boost.Asio
-- STUN (Session Traversal Utilities for NAT, RFC 5389) - позволяет определить публичный IP/порт клиента за NAT
-- TCP и UDP - для гарантированной доставки текстовых сообщений и сигнальных данных и для быстрой передачи файлов с примитивным механизмом подтверждения соответсвенно 
-- *Makefile* - для сборки проекта, упрощая процесс компиляции и линковки зависимостей.
+### **🌐 Technologies Used**
+- Programming Language: **C++17**
+- Boost.Asio: For asynchronous network I/O (TCP and UDP).
+- Boost.System: For system error handling and Boost.Asio integration.
+- STUN (Session Traversal Utilities for NAT, RFC 5389): To determine the public IP/port of a client behind NAT.
+- TCP & UDP: For reliable text messaging and signaling (TCP) and fast file transfer with basic ACK (UDP).
+- Makefile: For simplifying the project build process.
 ***
-### <font color="FFCCCC">**📘 Спецификации**</font> 
-В основе нашего решения лежит концепция использования нескольких протоколов и стандартов, дополняющих друг друга. Такой подход позволяет обеспечить надёжную, удобную и гибкую коммуникацию даже при сложных сетевых условиях
+### **📘 Specifications**
+The solution uses multiple complementary protocols and standards to ensure reliable, convenient, and flexible communication, even in complex network conditions.
 
 #### STUN (RFC 5389)
 
-
  <details>
-  <summary>❓Перед погружением в подробности советуем узнать, что же такое NAT❓</summary>
-   NAT (Network Address Translation) — это технология, широко применяемая в маршрутизаторах и межсетевых экранах для переотображения «внутренних» адресов локальной сети на один или несколько публичных IP-адресов.Однако NAT усложняет прямое взаимодействие между хостами, находящимися за разными NAT-устройствами. Когда клиент пытается установить соединение извне, он видит только публичный адрес, присвоенный маршрутизатором, но не знает внутренний адрес хоста, находящегося за NAT. 
-</details>
+  <summary>❓Quick primer on NAT before diving in❓</summary>
+   NAT (Network Address Translation) is a technology widely used in routers and firewalls to map "internal" local network addresses to one or more public IP addresses. However, NAT complicates direct interaction between hosts located behind different NAT devices. When a client tries to establish a connection from the outside, it only sees the public address assigned by the router, not knowing the internal address of the host behind the NAT.
+ </details>
 
-Проблема, с которой мы столкнулись, заключалась в том, что без знания своего публичного адреса хост, находящийся за NAT, не может сообщить другим участникам сети, как к нему подключиться напрямую. Если бы мы попытались просто обменяться адресами, клиенты за NAT не смогли бы установить соединение друг с другом, так как их внутренние IP-адреса (например, 192.168.x.x) не видны и не маршрутизируются в глобальной сети.
-Как мы это решили? 
-Для определения публичного IP-адреса и порта клиента, скрытого за NAT, мы применяем протокол STUN (Session Traversal Utilities for NAT). Его ключевая задача — помочь клиенту «увидеть себя извне»: отправив Binding Request на STUN-сервер, клиент получает в ответ свой публичный адрес. Это открывает путь к прямому взаимодействию между клиентами, расположенными в различных сетях, и даёт возможность гибко работать в условиях разнообразных NAT-конфигураций.
->- [❌] Реализация через простую локальную сеть
->- [✅] Грандиозный проект с реализацией STUN протокола 
+The problem is that without knowing its public address, a host behind NAT cannot inform other network participants how to connect to it directly. If clients behind NAT simply exchanged their internal IP addresses (e.g., 192.168.x.x), they wouldn't be able to connect, as these addresses are not visible or routable on the global internet.
+Our Solution:
+To determine the public IP address and port of a client hidden behind NAT, we use the STUN protocol. Its key function is to help the client "see itself from the outside." By sending a Binding Request to a STUN server, the client receives its public address in response. This enables direct interaction between clients in different networks and allows flexible operation under various NAT configurations.
+>- [❌] Simple local network implementation
+>- [✅] Comprehensive project with STUN protocol implementation
 
-#### **➤TCP для текстовых сообщений**
+#### **➤ TCP for Text Messages**
 
-**TCP (Transmission Control Protocol)** — это надёжный протокол транспортного уровня, используемый для передачи данных, в том числе текстовых сообщений, между клиентом и сервером. TCP обеспечивает гарантированную доставку сообщений в правильном порядке.
-Как работает этот протокол? Для передачи текстовых сообщений с использованием TCP, сервер открывает сокет и "слушает" входящие соединения, а клиент устанавливает связь и отправляет данные. Сообщения передаются в виде байтовых потоков, которые на принимающей стороне преобразуются обратно в читаемый текст.
-#### **➤UDP для передачи файлов**
-Для пересылки файлов используется **UDP (User Datagram Protocol)**, поскольку он:
-- Быстрее и не требует установки надёжного соединения, что снижает задержки.
-- Гибче, т.е позволяет реализовать собственные механизмы подтверждений по блокам (ACK), адаптируясь к конкретным требованиям к скорости или надёжности.
+**TCP (Transmission Control Protocol)** is a reliable transport layer protocol used for data transmission, including text messages, between the client and server. TCP ensures guaranteed delivery of messages in the correct order.
+How it works: For text messaging using TCP, the server opens a socket and listens for incoming connections, while the client establishes a connection and sends data. Messages are transmitted as byte streams, which are converted back to readable text on the receiving end.
 
-Мы не используем ❌«голый»❌ UDP — поверх него реализован простой протокол, отправляющий данные небольшими фрагментами и ожидающий подтверждения (ACK) от получателя. Если подтверждение не приходит, отправитель может повторно выслать утерянный фрагмент. Такой подход обеспечивает хороший баланс между производительностью и надёжностью, не перегружая логику сложными схемами контроля потока и повторной передачи.
+#### **➤ UDP for File Transfer**
+For file transfer, **UDP (User Datagram Protocol)** is used because it is:
+- Faster, as it doesn't require establishing a reliable connection, reducing latency.
+- More flexible, allowing implementation of custom block-based acknowledgment (ACK) mechanisms, adapting to specific speed or reliability requirements.
+
+We don't use "raw" UDP. Instead, a simple protocol is implemented on top of it, sending data in small chunks and waiting for an ACK from the receiver. If an ACK is not received, the sender can resend the lost chunk. This approach balances performance and reliability without overly complex flow control and retransmission schemes.
 <details>
-  <summary>Изображение, наглядно иллюстрирующее работу UDP и TCP ⤵</summary>
+  <summary>Visual illustration of UDP and TCP operation ⤵</summary>
 
   ![Работа UDP и TCP](pictures/photo_2024-12-20_10-46-07.jpg)
 
 </details>
 
+#### **➤ Boost Documentation and Boost.Asio Usage**
+For network interaction, we used the Boost.Asio library, a well-known tool for asynchronous I/O in C++. Its key features:
+- Asynchronous model: Efficiently uses resources and handles multiple connections.
+- Versatility: Supports TCP, UDP, timers, and other I/O mechanisms through a unified interface.
+- Documentation: The official [Boost.Asio Documentation](https://www.boost.org/doc/libs/master/doc/html/boost_asio.html) provides examples, tutorials, and API descriptions, facilitating learning and development.
 
-#### **➤Документация Boost и использование Boost.Asio**
-Для реализации сетевого взаимодействия мы применили библиотеку Boost.Asio — один из наиболее известных инструментов для асинхронного ввода-вывода в C++. Её ключевые особенности:
-- Асинхронная модель позволяет эффективно использовать ресурсы и обслуживать множество подключений.
-- Boost.Asio поддерживает TCP, UDP, таймеры и другие механизмы ввода-вывода, обеспечивая единый интерфейс для различных операций.
-- В официальной документации (см. [Boost.Asio Documentation](https://www.boost.org/doc/libs/master/doc/html/boost_asio.html)) можно найти примеры, руководства и описания API. Это облегчает освоение библиотеки и ускоряет процесс разработки.
-
-При разработке мы опирались как на стандартные примеры из документации, так и на описание протоколов (RFC 5389 для STUN, спецификации TCP/UDP). Это помогло нам создать решение, сочетающее удобство и гибкость Boost.Asio с надёжностью хорошо проработанных сетевых протоколов.
+During development, we relied on standard examples from the documentation and protocol descriptions (RFC 5389 for STUN, TCP/UDP specifications). This helped create a solution combining Boost.Asio's convenience and flexibility with the reliability of well-established network protocols.
 ***
-### <font color="FFCCCC">**🤖 Основные возможности** </font>  
-Мессенджер объединяет в себе все ключевые элементы для удобного общения за пределами локальных сетей. Клиент, прежде чем подключиться, определяет свой публичный адрес с помощью STUN, упрощая взаимодействие при работе через NAT. Сервер служит «хабом» для всех подключений, перенаправляя текстовые сообщения от одного пользователя к другому, а для передачи файлов предусмотрен лёгкий и быстрый канал по протоколу UDP с базовым механизмом подтверждения доставки. Такой подход обеспечивает плавный обмен данными и упрощает совместную работу, делая процесс коммуникации максимально прозрачным и доступным
+### **🤖 Core Features**
+The messenger integrates key elements for convenient communication beyond local networks. Before connecting, the client determines its public address using STUN, simplifying interaction when working through NAT. The server acts as a "hub" for all connections, redirecting text messages between users. A lightweight and fast UDP channel with a basic delivery confirmation mechanism is provided for file transfer. This approach ensures smooth data exchange and simplifies collaboration, making communication transparent and accessible.
 ***
-### <font color="FFCCCC">**☰ Cтруктура проекта**</font>
-![Структура проекта](pictures/схема.jpg)
 
-Проект организован по классической схеме: в директории src/ располагается исходный код, отвечающий за основную логику работы, а в include/ — заголовочные файлы с интерфейсами и общими определениями.
+### **🐍 Python GUI**
+A Python-based Graphical User Interface (GUI) is provided for interacting with the messenger client. It allows users to send and receive messages in a user-friendly windowed application.
 
-Тут вы можете по подобробнее узнать про элементы реализации ⤵: 
+**Dependency Installation:**
+Before running the GUI, install the required libraries. Ensure you have `pip` for Python installed. Then, execute the following command in the terminal from the project's root directory:
+```bash
+pip install -r src/GUI/requirements.txt
+```
 
-**src/**:
+**Running the GUI:**
+To start the GUI, execute the following command from the project's root directory:
+```bash
+python src/GUI/main.py
+```
+***
+### **☰ Project Structure**
+![Project Structure Diagram](pictures/схема.jpg)
+
+Проект организован по классической схеме: в директории `src/` располагается исходный код, отвечающий за основную логику работы, а в `include/` — заголовочные файлы с интерфейсами и общими определениями.
+
+Тут вы можете по подробнее узнать про элементы реализации ⤵:
+
+**`src/`**:
 <details>
   <summary>main_server.cpp</summary>
-  точка входа для запуска сервера.
+  Entry point for starting the server.
 </details>
 <details>
   <summary>main_client.cpp</summary>
-   точка входа для запуска клиента.
+  Entry point for starting the client.
 </details>
 <details>
   <summary>common.cpp</summary>
-   реализация общих функций (логирование, вспомогательные утилиты).
+  Implementation of common functions (logging, auxiliary utilities).
 </details>
 <details>
   <summary>stun.cpp, stun_client.cpp</summary>
-   реализация STUN-клиента
+  STUN client implementation.
 </details>
 <details>
   <summary>tcp_server.cpp, tcp_client.cpp</summary>
-   реализация сервера и клиента для обмена сообщениями по TCP
+  Server and client implementation for TCP message exchange.
 </details>
 <details>
   <summary>udp_file_sender.cpp, udp_file_receiver.cpp</summary>
-   реализация отправки и приёма файлов по UDP
+  Implementation of UDP file sending and receiving.
 </details>
 <details>
   <summary>message.cpp</summary>
-   реализация сериализации сообщений
+  Message serialization implementation.
 </details>
 <details>
   <summary>file_transfer_protocol.cpp</summary>
-   реализация протокола передачи файлов
+  File transfer protocol implementation.
 </details>
-
 <details>
   <summary>encryption.cpp</summary>
-  реализация XOR шифрования
+  XOR encryption implementation.
 </details>
-
 <details>
   <summary>database.cpp</summary>
-   описание взаимодействия с базами данных
+  Description of database interaction.
 </details>
 <details>
   <summary>Makefile</summary>
-   Скрипт сборки проекта. Выполнение команды make сгенерирует исполняемые файлы для сервера и клиента.
+  Project build script. Running `make` will generate executables for the server and client.
 </details>
 
 ***
 
-### <font color="FFCCCC">**🐋 Dockerfile**</font>
+### **🐋 Dockerization**
 
-Dockerfile представляет собой инструмент, позволяющий автоматизировать процесс сборки и запуска проекта в изолированной среде. Это обеспечивает его стабильную работу на различных компьютерах, независимо от операционной системы и версии программного обеспечения хоста.
-Как работает Dockerfile?
-В Dockerfile происходит установка необходимых библиотек и инструментов, таких как *g++, CMake, Boost и SQLite*. Это позволяет избежать ручной настройки окружения.
-Затем все исходные файлы проекта копируются в контейнер. Это позволяет собрать проект с помощью CMake.
-После этого происходит сборка проекта с использованием команд cmake и make. В результате создаются все необходимые исполняемые файлы, включая сервер, клиент и утилиты для передачи файлов.
-После сборки проекта он запускается.
-После завершения сборки по умолчанию запускается сервер. Однако также можно запустить и другие компоненты, такие как клиент или инструменты для отправки файлов
+A Dockerfile is a tool that automates the process of building and running a project in an isolated environment. This ensures its stable operation on different computers, regardless of the host's operating system and software versions.
+How Docker works:
+The Dockerfile installs necessary libraries and tools like *g++, CMake, Boost, and SQLite*, avoiding manual environment setup.
+Project source files are copied into the container, allowing the project to be built using CMake.
+The project is then built using `cmake` and `make` commands, creating executables for the server, client, and file transfer utilities.
+After building, the project (server by default) is launched. Other components like the client or file transfer tools can also be run.
+
 <details>
-  <summary>❓Для чего мы использовали Docker❓</summary>
+  <summary>❓Why use Docker❓</summary>
   
-  - **Изоляция проекта и его зависимостей**. Docker позволяет создать изолированное пространство, в котором проект и его зависимости будут находиться в безопасности.
-  
-  - **Автоматизация сборки**. Dockerfile выполняет функцию «волшебной палочки», которая автоматически собирает ваш проект. Вам не нужно выполнять сборку вручную — все действия выполняются автоматически.
-  
-  - **Запуск приложения**. С помощью Dockerfile вы можете запустить своё приложение непосредственно в контейнере. Это обеспечивает удобство и надёжность.
+  - **Project and dependency isolation**: Docker creates a secure, isolated space for the project and its dependencies.
+  - **Build automation**: Dockerfile acts like a "magic wand," automating the project build process.
+  - **Application deployment**: Dockerfile allows direct application startup within the container, ensuring convenience and reliability.
   
 </details>
 
-***
+This project uses two main Dockerfiles:
+1.  **`src/app/Dockerfile.messenger`**: For the C++ messenger server and client.
+2.  **`src/ml-scripts/Dockerfile.model`**: For the Python-based ML auto-scaling model.
 
-**🛠️ Запуск Dockerfile**
+**🛠️ Building and Running the Messenger Docker Image (`src/app/Dockerfile.messenger`)**
 
-Для запуска сервера необходимо открыть порты. Для этого в **Dockerfile* добавляем команду:
-```c++
-dockerfile.Copy код
-EXPOSE 80 
-```
-Данная команда сообщает Docker, что мы хотим открыть порт 80 для доступа извне. После запуска сервера он будет доступен по адресу *localhost:80*.
-После сборки и запуска сервера переходим к созданию образа. Для этого в Dockerfile добавляем команду:
-```c++
-dockerfile.Copy код
-FROM ubuntu:latest
-```
-Эта команда указывает Docker создать образ на основе Ubuntu.
-Теперь образ готов к использованию. Следующим шагом будет создать контейнер на его основе и запустить сервер. Для этого в **Dockerfile* нужно добавить команды:
-```c++
-dockerfile.Copy код
-FROM ubuntu:latest
-RUN apt-get update && apt-get install -y \
-    g++ \
-    cmake \
-    make \
-    libboost-system-dev \
-    libsqlite3-dev \
-    libpthread-stubs0-dev \
-    libboost-filesystem-dev \
-    libboost-program-options-dev
-```
-Для создания образа и запуска сервера на основе **Dockerfile* необходимо выполнить следующие шаги:
-1. Создать новый файл с именем Dockerfile в папке, где будет находиться образ.
-2. В **Dockerfile* прописать следующие строки:
-```c++
-FROM ubuntu:latest
-RUN mkdir bin && cp build/myapp /bin
-CMD [“/bin/myapp”]
-```
-3. С помощью команды создать образ с именем myapp:
-```c++
-docker build -t myapp .
-```
-Эта команда создаст образ с именем myapp и выполнит все шаги, описанные в Dockerfile.
-4. Запустить контейнер с сервером:
-```c++
-docker run -d -p 80:80 myapp
-```
-Эта команда создаст контейнер на основе образа myapp и запустит сервер.
-Сервер будет доступен по адресу localhost:80.
+1.  **Navigate to the application directory:**
+    ```bash
+    cd src/app
+    ```
+    *(Adjust path if your Dockerfile.messenger is located elsewhere)*
 
-Для того чтобы использовать Dockerfile, необходимо выполнить следующие действия:
-1. Перейти в папку с Dockerfile.
-2. Выполнить команду для создания образа:
-```c++
-docker build -t myapp .
-```
-Эта команда создаст образ с именем myapp и выполнит все шаги, описанные в Dockerfile.
-3. Запустить контейнер с сервером:
-```c++
-docker run -p 5000:5000 -it myapp
-```
-Эта команда создаст контейнер на основе образа myapp и запустит сервер, перенаправив порт 5000 на хост-машину.
+2.  **Build the Docker image:**
+    Replace `your-messenger-app` with your desired image name and tag (e.g., `clsrvrvmessager/messenger:latest`).
+    ```bash
+    docker build -f Dockerfile.messenger -t your-messenger-app .
+    ```
+
+3.  **Run the Messenger Server container:**
+    This example runs the server and maps port 8080 on the host to port 8080 in the container. Adjust ports as needed.
+    ```bash
+    docker run -d -p 8080:8080 your-messenger-app
+    ```
+    The server should now be accessible (e.g., at `http://localhost:8080`).
+
+**🛠️ Building and Running the ML Model Docker Image (`src/ml-scripts/Dockerfile.model`)**
+
+1.  **Navigate to the ML scripts directory:**
+    ```bash
+    cd src/ml-scripts
+    ```
+
+2.  **Build the Docker image:**
+    Replace `your-ml-model` with your desired image name and tag (e.g., `clsrvrvmessager/ml-model:latest`).
+    ```bash
+    docker build -f Dockerfile.model -t your-ml-model .
+    ```
+
+3.  **Run the ML Model container:**
+    How you run this container will depend on its specific function (e.g., if it is a service, if it needs specific ports exposed, or if it is part of a larger system like Kubernetes where it is run as a deployment).
+    Refer to the ML model's specific documentation or the `ml_scaler.py` script for how it is intended to be used. For example, if it is a service that needs a port:
+    ```bash
+    docker run -d -p 5001:5001 your-ml-model
+    ```
+    *(Adjust port `5001` as per the ML service's requirements.)*
 
 ***
 
-### <font color="FFCCCC">**👥Результаты автоматического Boost тестирования**</font>
-![Работа мессенджера](pictures/tests.jpg)
+### **☸️ Kubernetes Deployment**
+For deploying, scaling, and managing the containerized ClSrvrvMessager application in a cluster, Kubernetes is used. The `src/k8s` directory contains all necessary Kubernetes manifest files.
+
+**Key Deployable Components:**
+- **Messenger Server:** The main messaging server (`messenger-deployment.yaml`, `messenger-service.yaml`).
+- **ML Scaler:** Component for automatic scaling based on the ML model (`ml-scaler-deployment.yaml`).
+- Other components such as ConfigMaps, Persistent Volume Claims, RBAC, and a CronJob for model retraining are also in this directory.
+
+**Deployment Instructions:**
+Components are deployed to a Kubernetes cluster using the `kubectl` utility. You can apply manifests individually or all at once.
+
+To apply a specific manifest:
+```bash
+kubectl apply -f src/k8s/<filename>.yaml
+```
+For example, to deploy the messenger server:
+```bash
+kubectl apply -f src/k8s/messenger-deployment.yaml
+kubectl apply -f src/k8s/messenger-service.yaml
+```
+
+To apply all manifests in the `src/k8s` directory (it's recommended to apply `namespace.yaml` and `persistent-volume-claims.yaml` first if used for the first time):
+```bash
+kubectl apply -k src/k8s 
+```
+*Note: `kubectl apply -k` is used if a `kustomization.yaml` file is present in the `src/k8s` directory. If not, apply files individually or using `kubectl apply -f src/k8s/` (note the trailing `/`, which might require a specific directory structure or kubectl version).*
+
+**Load Testing with JMeter:**
+The project also includes a configuration for load testing using JMeter. The file `src/k8s/jmeter-load-test.yaml` can be used to launch JMeter pods in the cluster, which will execute tests based on the `src/k8s/messenger_test.jmx` plan. This helps assess the performance and scalability of the deployed application.
+
+***
+
+### **🧠 ML-based Auto-scaling**
+For intelligent resource management, the project implements an ML-based auto-scaling system. All scripts related to training and using ML models are in the `src/ml-scripts` directory.
+
+**Model Purpose:**
+The main goal of these ML models is to predict the load on the messaging server and automatically adjust allocated resources (e.g., number of pods in Kubernetes) to ensure optimal performance and resource economy. Models can analyze historical traffic data, CPU usage, and other metrics to predict future load.
+
+**Model Training:**
+The following scripts are provided for training or retraining models:
+- `src/ml-scripts/train_local.py`: Used for initial model training on a local dataset (e.g., `local_training_data.csv`).
+- `src/ml-scripts/retrain_model.py`: Can be used for periodic model retraining based on new data collected during application operation. This script can be automated, for example, using a CronJob in Kubernetes (see `src/k8s/model-retrainer-cronjob.yaml`).
+
+**Using `ml_scaler.py` with Kubernetes:**
+The `src/ml-scripts/ml_scaler.py` script contains logic to get predictions from the trained ML model and interact with the Kubernetes API to adjust the number of replicas of the corresponding Deployment (e.g., messenger-server). This script is a key component of `ml-scaler-deployment.yaml`, which deploys it as a separate service in Kubernetes. It periodically queries the model, gets current metrics, and makes scaling decisions.
+
+**Containerizing ML Models:**
+`src/ml-scripts/Dockerfile.model` is used to package ML models and their dependencies into an isolated environment. This allows for easy deployment and updating of ML components in Kubernetes or other environments.
+
+***
+
+### **👥 Boost Test Results**
+![Boost Test Results](pictures/tests.jpg)
 
 ***
